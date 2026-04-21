@@ -1,0 +1,25 @@
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+node_modules/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+
+# Test artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
+*.png
+screenshots/
+
+# OS
+.DS_Store
