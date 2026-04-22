@@ -35,10 +35,7 @@ export default function ChatNode({ data, selected }: NodeProps) {
     >
       <ChatNodeHeader
         label={label}
-        modelId={model_id}
-        models={models}
         onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}
-        onModelChange={(newModelId) => updateNodeModel(db_node_id, newModelId)}
       />
       {nodeError && (
         <div className="bg-danger-muted border-b border-danger/20 px-3 py-2 text-danger text-xs">
@@ -53,6 +50,17 @@ export default function ChatNode({ data, selected }: NodeProps) {
       {(!isLoading || nodeMessages.length > 0) && (
         <ChatNodeMessages messages={nodeMessages} streaming={nodeStreaming} />
       )}
+      <div className="px-3 pb-2">
+        <select
+          value={model_id}
+          onChange={(e) => updateNodeModel(db_node_id, Number(e.target.value))}
+          className="w-full bg-bg-input text-text-primary text-sm rounded px-2 py-1.5 outline-none transition-ui border border-border"
+        >
+          {models.map((m) => (
+            <option key={m.id} value={m.id}>{m.display_name}</option>
+          ))}
+        </select>
+      </div>
       <ChatNodeInput
         onSend={(msg) => sendMessage(project_id, db_node_id, msg)}
         disabled={isStreaming}
