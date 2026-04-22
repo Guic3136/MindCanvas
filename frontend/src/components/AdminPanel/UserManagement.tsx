@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import * as adminApi from '../../api/admin'
 
 interface UserItem { id: number; username: string; is_admin: boolean; created_at: string }
@@ -13,7 +14,10 @@ export default function UserManagement() {
   useEffect(() => { load() }, [])
 
   const handleAdd = async () => {
-    if (!newUser.username || !newUser.password) return
+    if (!newUser.username || !newUser.password) {
+      toast.error('请填写所有必填字段')
+      return
+    }
     await adminApi.createUser(newUser)
     setNewUser({ username: '', password: '' })
     setShowAdd(false)

@@ -162,3 +162,10 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ReactFlow: override default white background */
+.react-flow,
+.react-flow__renderer,
+.react-flow__pane {
+  background-color: var(--color-bg) !important;
+}
