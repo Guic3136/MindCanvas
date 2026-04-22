@@ -1,13 +1,15 @@
 import { create } from 'zustand'
-import type { Project, NodeInfo, EdgeInfo, ModelInfo } from '../types'
+import type { Project, NodeInfo, EdgeInfo, ModelInfo, PaginatedResponse } from '../types'
 import * as projectApi from '../api/project'
 import * as chatApi from '../api/chat'
 import client from '../api/client'
+import { useChatStore } from './chatStore'
 
 interface CanvasState {
   project: Project | null
   models: ModelInfo[]
   loading: boolean
+  error: { message: string | null; node?: string }
 
   loadProject: (id: number) => Promise<void>
   loadModels: () => Promise<void>
@@ -25,36 +27,56 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   project: null,
   models: [],
   loading: true,
+  error: { message: null },
 
   loadProject: async (id) => {
-    set({ loading: true })
-    const project = await projectApi.getProject(id)
-    set({ project, loading: false })
+    try {
+      set({ loading: true, error: { message: null } })
+      const project = await projectApi.getProject(id)
+      set({ project, loading: false, error: { message: null } })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load project'
+      set({ loading: false, error: { message } })
+      console.error('[canvasStore] loadProject failed:', err)
+    }
   },
 
   loadModels: async () => {
-    const { data } = await client.get<ModelInfo[]>('/admin/models')
-    set({ models: data.filter((m) => m.is_enabled) })
+    try {
+      const { data } = await client.get<PaginatedResponse<ModelInfo>>('/admin/models')
+      set({ models: data.items.filter((m) => m.is_enabled) })
+    } catch (err) {
+      console.error('[canvasStore] loadModels failed:', err)
+    }
   },
 
   addNode: async (modelId, position) => {
-    const { project } = get()
-    if (!project) return
-    const node = await chatApi.createNode(project.id, {
-      model_id: modelId,
-      label: `节点 ${(project.nodes?.length || 0) + 1}`,
-      position_x: position.x,
-      position_y: position.y,
-    })
-    set((s) => ({
-      project: s.project ? { ...s.project, nodes: [...s.project.nodes, node] } : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      const node = await chatApi.createNode(project.id, {
+        model_id: modelId,
+        label: `节点 ${(project.nodes?.length || 0) + 1}`,
+        position_x: position.x,
+        position_y: position.y,
+      })
+      set((s) => ({
+        project: s.project ? { ...s.project, nodes: [...s.project.nodes, node] } : null,
+        error: { message: null },
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add node'
+      set({ error: { message } })
+      console.error('[canvasStore] addNode failed:', err)
+    }
   },
 
   updateNodePosition: (nodeId, position) => {
     const { project } = get()
     if (!project) return
-    chatApi.updateNode(project.id, nodeId, { position_x: position.x, position_y: position.y })
+    chatApi.updateNode(project.id, nodeId, { position_x: position.x, position_y: position.y }).catch((err) => {
+      console.error('[canvasStore] updateNodePosition failed:', err)
+    })
     set((s) => ({
       project: s.project
         ? {
@@ -68,84 +90,115 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   updateNodeLabel: async (nodeId, label) => {
-    const { project } = get()
-    if (!project) return
-    await chatApi.updateNode(project.id, nodeId, { label })
-    set((s) => ({
-      project: s.project
-        ? {
-            ...s.project,
-            nodes: s.project.nodes.map((n) => (n.id === nodeId ? { ...n, label } : n)),
-          }
-        : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      await chatApi.updateNode(project.id, nodeId, { label })
+      set((s) => ({
+        project: s.project
+          ? {
+              ...s.project,
+              nodes: s.project.nodes.map((n) => (n.id === nodeId ? { ...n, label } : n)),
+            }
+          : null,
+      }))
+    } catch (err) {
+      console.error('[canvasStore] updateNodeLabel failed:', err)
+    }
   },
 
   updateNodeModel: async (nodeId, modelId) => {
-    const { project } = get()
-    if (!project) return
-    await chatApi.updateNode(project.id, nodeId, { model_id: modelId })
-    set((s) => ({
-      project: s.project
-        ? {
-            ...s.project,
-            nodes: s.project.nodes.map((n) => (n.id === nodeId ? { ...n, model_id: modelId } : n)),
-          }
-        : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      await chatApi.updateNode(project.id, nodeId, { model_id: modelId })
+      set((s) => ({
+        project: s.project
+          ? {
+              ...s.project,
+              nodes: s.project.nodes.map((n) => (n.id === nodeId ? { ...n, model_id: modelId } : n)),
+            }
+          : null,
+      }))
+    } catch (err) {
+      console.error('[canvasStore] updateNodeModel failed:', err)
+    }
   },
 
   removeNode: async (nodeId) => {
-    const { project } = get()
-    if (!project) return
-    await chatApi.deleteNode(project.id, nodeId)
-    set((s) => ({
-      project: s.project
-        ? {
-            ...s.project,
-            nodes: s.project.nodes.filter((n) => n.id !== nodeId),
-            edges: s.project.edges.filter(
-              (e) => e.source_node_id !== nodeId && e.target_node_id !== nodeId
-            ),
-          }
-        : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      await chatApi.deleteNode(project.id, nodeId)
+      useChatStore.getState().clearNodeMessages(nodeId)
+      set((s) => ({
+        project: s.project
+          ? {
+              ...s.project,
+              nodes: s.project.nodes.filter((n) => n.id !== nodeId),
+              edges: s.project.edges.filter(
+                (e) => e.source_node_id !== nodeId && e.target_node_id !== nodeId
+              ),
+            }
+          : null,
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove node'
+      set({ error: { message, node: String(nodeId) } })
+      console.error('[canvasStore] removeNode failed:', err)
+    }
   },
 
   addEdge: async (sourceId, targetId) => {
-    const { project } = get()
-    if (!project) return
-    const edge = await chatApi.createEdge(project.id, {
-      source_node_id: sourceId,
-      target_node_id: targetId,
-    })
-    set((s) => ({
-      project: s.project ? { ...s.project, edges: [...s.project.edges, edge] } : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      const edge = await chatApi.createEdge(project.id, {
+        source_node_id: sourceId,
+        target_node_id: targetId,
+      })
+      set((s) => ({
+        project: s.project ? { ...s.project, edges: [...s.project.edges, edge] } : null,
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add edge'
+      set({ error: { message } })
+      console.error('[canvasStore] addEdge failed:', err)
+    }
   },
 
   updateEdgeMode: async (edgeId, contextMode) => {
-    const { project } = get()
-    if (!project) return
-    await chatApi.updateEdge(project.id, edgeId, { context_mode: contextMode })
-    set((s) => ({
-      project: s.project
-        ? {
-            ...s.project,
-            edges: s.project.edges.map((e) =>
-              e.id === edgeId ? { ...e, context_mode: contextMode } : e
-            ),
-          }
-        : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      await chatApi.updateEdge(project.id, edgeId, { context_mode: contextMode })
+      set((s) => ({
+        project: s.project
+          ? {
+              ...s.project,
+              edges: s.project.edges.map((e) =>
+                e.id === edgeId ? { ...e, context_mode: contextMode } : e
+              ),
+            }
+          : null,
+      }))
+    } catch (err) {
+      console.error('[canvasStore] updateEdgeMode failed:', err)
+    }
   },
 
   removeEdge: async (edgeId) => {
-    const { project } = get()
-    if (!project) return
-    await chatApi.deleteEdge(project.id, edgeId)
-    set((s) => ({
-      project: s.project ? { ...s.project, edges: s.project.edges.filter((e) => e.id !== edgeId) } : null,
-    }))
+    try {
+      const { project } = get()
+      if (!project) return
+      await chatApi.deleteEdge(project.id, edgeId)
+      set((s) => ({
+        project: s.project ? { ...s.project, edges: s.project.edges.filter((e) => e.id !== edgeId) } : null,
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove edge'
+      set({ error: { message } })
+      console.error('[canvasStore] removeEdge failed:', err)
+    }
   },
 }))

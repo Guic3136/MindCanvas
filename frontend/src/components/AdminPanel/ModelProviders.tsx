@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import * as adminApi from '../../api/admin'
 import type { ModelProvider, ModelInfo } from '../../types'
 
@@ -14,14 +15,17 @@ export default function ModelProviders() {
 
   const load = async () => {
     const [p, m] = await Promise.all([adminApi.listProviders(), adminApi.listModels()])
-    setProviders(p)
-    setModels(m)
+    setProviders(p.items)
+    setModels(m.items)
   }
 
   useEffect(() => { load() }, [])
 
   const handleAddProvider = async () => {
-    if (!newProvider.name || !newProvider.base_url || !newProvider.api_key) return
+    if (!newProvider.name || !newProvider.base_url || !newProvider.api_key) {
+      toast.error('请填写所有必填字段')
+      return
+    }
     await adminApi.createProvider(newProvider)
     setNewProvider({ name: '', base_url: '', api_key: '' })
     setShowAddProvider(false)
@@ -29,7 +33,10 @@ export default function ModelProviders() {
   }
 
   const handleAddModel = async (providerId: number) => {
-    if (!newModel.model_id || !newModel.display_name) return
+    if (!newModel.model_id || !newModel.display_name) {
+      toast.error('请填写所有必填字段')
+      return
+    }
     await adminApi.createModel({ provider_id: providerId, ...newModel })
     setNewModel({ model_id: '', display_name: '' })
     setShowAddModel(null)

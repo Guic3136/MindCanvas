@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 from core.database import Base
 from core.security import encrypt_value, decrypt_value
@@ -41,7 +41,7 @@ class Model(Base):
     __tablename__ = "models"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    provider_id = Column(Integer, ForeignKey("model_providers.id"), nullable=False)
+    provider_id = Column(Integer, ForeignKey("model_providers.id"), nullable=False, index=True)
     model_id = Column(String(200), nullable=False)
     display_name = Column(String(200), nullable=False)
     is_enabled = Column(Boolean, default=True)
@@ -54,7 +54,7 @@ class Project(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(300), nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -67,8 +67,8 @@ class Node(Base):
     __tablename__ = "nodes"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    model_id = Column(Integer, ForeignKey("models.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    model_id = Column(Integer, ForeignKey("models.id"), nullable=False, index=True)
     label = Column(String(300), nullable=False, default="新节点")
     position_x = Column(Float, default=0)
     position_y = Column(Float, default=0)
@@ -84,10 +84,15 @@ class Edge(Base):
     __tablename__ = "edges"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    source_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    target_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    context_mode = Column(String(50), default="full_history")  # "full_history" | "last_reply"
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    source_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
+    target_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
+    context_mode = Column(String(50), default="full_history")
+
+    __table_args__ = (
+        UniqueConstraint('project_id', 'source_node_id', 'target_node_id', name='uq_edge_source_target'),
+        CheckConstraint("context_mode IN ('full_history', 'last_reply')", name='chk_edge_context_mode'),
+    )
 
     project = relationship("Project", back_populates="edges")
     source_node = relationship("Node", foreign_keys=[source_node_id])
@@ -96,10 +101,13 @@ class Edge(Base):
 
 class Message(Base):
     __tablename__ = "messages"
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'assistant')", name='chk_message_role'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False)
-    role = Column(String(20), nullable=False)  # "user" | "assistant"
+    node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

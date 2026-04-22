@@ -1,36 +1,30 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from collections import deque
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db, async_session
-from models.db import Project, Node, Edge, Message, User, Model
+from models.db import Node, Edge, Message, User, Model
 from schemas.node import (
     NodeCreate, NodeUpdate, NodeResponse,
     EdgeCreate, EdgeUpdate, EdgeResponse,
     MessageResponse,
 )
 from routers.auth import get_current_user
+from core.auth import verify_project_ownership
 from services.llm_client import stream_chat
 from services.context_builder import build_context_messages
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["nodes"])
 
 
-async def _get_project(project_id: int, user: User, db: AsyncSession) -> Project:
-    result = await db.execute(select(Project).where(Project.id == project_id, Project.owner_id == user.id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
-
-
 # --- Nodes ---
 
 @router.post("/nodes", response_model=NodeResponse)
 async def create_node(project_id: int, req: NodeCreate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     node = Node(project_id=project_id, model_id=req.model_id, label=req.label, position_x=req.position_x, position_y=req.position_y)
     db.add(node)
     await db.commit()
@@ -40,7 +34,7 @@ async def create_node(project_id: int, req: NodeCreate, db: AsyncSession = Depen
 
 @router.put("/nodes/{nid}", response_model=NodeResponse)
 async def update_node(project_id: int, nid: int, req: NodeUpdate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     node = await db.get(Node, nid)
     if not node or node.project_id != project_id:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -53,7 +47,7 @@ async def update_node(project_id: int, nid: int, req: NodeUpdate, db: AsyncSessi
 
 @router.delete("/nodes/{nid}")
 async def delete_node(project_id: int, nid: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     node = await db.get(Node, nid)
     if not node or node.project_id != project_id:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -64,7 +58,7 @@ async def delete_node(project_id: int, nid: int, db: AsyncSession = Depends(get_
 
 @router.get("/nodes/{nid}/messages", response_model=list[MessageResponse])
 async def get_messages(project_id: int, nid: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     node = await db.get(Node, nid)
     if not node or node.project_id != project_id:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -76,7 +70,39 @@ async def get_messages(project_id: int, nid: int, db: AsyncSession = Depends(get
 
 @router.post("/edges", response_model=EdgeResponse)
 async def create_edge(project_id: int, req: EdgeCreate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
+
+    if req.source_node_id == req.target_node_id:
+        raise HTTPException(status_code=400, detail="Self-referencing edge is not allowed")
+
+    result = await db.execute(
+        select(Edge).where(
+            Edge.project_id == project_id,
+            Edge.source_node_id == req.source_node_id,
+            Edge.target_node_id == req.target_node_id,
+        )
+    )
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Edge already exists between these nodes")
+
+    edges_result = await db.execute(
+        select(Edge.source_node_id, Edge.target_node_id).where(Edge.project_id == project_id)
+    )
+    adjacency: dict[int, list[int]] = {}
+    for src, tgt in edges_result.all():
+        adjacency.setdefault(src, []).append(tgt)
+
+    queue = deque([req.target_node_id])
+    visited = {req.target_node_id}
+    while queue:
+        current = queue.popleft()
+        for neighbor in adjacency.get(current, []):
+            if neighbor == req.source_node_id:
+                raise HTTPException(status_code=400, detail="Creating this edge would form a cycle")
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
     edge = Edge(project_id=project_id, source_node_id=req.source_node_id, target_node_id=req.target_node_id, context_mode=req.context_mode)
     db.add(edge)
     await db.commit()
@@ -86,7 +112,7 @@ async def create_edge(project_id: int, req: EdgeCreate, db: AsyncSession = Depen
 
 @router.put("/edges/{eid}", response_model=EdgeResponse)
 async def update_edge(project_id: int, eid: int, req: EdgeUpdate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     edge = await db.get(Edge, eid)
     if not edge or edge.project_id != project_id:
         raise HTTPException(status_code=404, detail="Edge not found")
@@ -98,7 +124,7 @@ async def update_edge(project_id: int, eid: int, req: EdgeUpdate, db: AsyncSessi
 
 @router.delete("/edges/{eid}")
 async def delete_edge(project_id: int, eid: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
     edge = await db.get(Edge, eid)
     if not edge or edge.project_id != project_id:
         raise HTTPException(status_code=404, detail="Edge not found")
@@ -109,7 +135,7 @@ async def delete_edge(project_id: int, eid: int, db: AsyncSession = Depends(get_
 
 @router.post("/nodes/{nid}/chat")
 async def chat(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await _get_project(project_id, user, db)
+    await verify_project_ownership(project_id, user, db)
 
     # Get node with model info
     result = await db.execute(

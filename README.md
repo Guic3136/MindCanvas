@@ -49,6 +49,14 @@ npm run dev
 docker-compose up --build
 ```
 
+Docker Compose 启动的服务：
+- **backend**：API 服务 (localhost:8000)，使用 PostgreSQL
+- **frontend**：Web 应用 (localhost:5173)
+- **db**：PostgreSQL 数据库
+- **pgadmin**：数据库管理界面 (localhost:5050，admin@mindcanvas.local / admin)
+
+本地开发默认使用 SQLite，Docker Compose 环境使用 PostgreSQL。
+
 浏览器访问 http://localhost:5173
 
 ## 首次使用配置
@@ -67,7 +75,7 @@ docker-compose up --build
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `DATABASE_URL` | SQLite 数据库路径 | `sqlite+aiosqlite:///./mindcanvas.db` |
+| `DATABASE_URL` | 数据库连接（SQLite 用于本地开发，PostgreSQL 用于 Docker Compose） | `sqlite+aiosqlite:///./mindcanvas.db` |
 | `SECRET_KEY` | JWT 密钥 | 随机生成 |
 | `ENCRYPTION_KEY` | API 密钥加密密钥 | 随机生成 |
 | `ADMIN_USERNAME` | 管理员账号 | `admin` |

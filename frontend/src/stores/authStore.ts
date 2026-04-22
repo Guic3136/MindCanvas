@@ -1,32 +1,24 @@
 import { create } from 'zustand'
 import type { User } from '../types'
+import client from '../api/client'
 
 interface AuthState {
   user: User | null
-  token: string | null
   isLoading: boolean
   setUser: (user: User | null) => void
-  setToken: (token: string | null) => void
   setLoading: (loading: boolean) => void
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
   isLoading: true,
   setUser: (user) => set({ user }),
-  setToken: (token) => {
-    if (token) {
-      localStorage.setItem('token', token)
-    } else {
-      localStorage.removeItem('token')
-    }
-    set({ token })
-  },
   setLoading: (isLoading) => set({ isLoading }),
-  logout: () => {
-    localStorage.removeItem('token')
-    set({ user: null, token: null })
+  logout: async () => {
+    try {
+      await client.post('/auth/logout')
+    } catch {}
+    set({ user: null })
   },
 }))

@@ -7,6 +7,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import ChatNode from './ChatNode'
 import CustomEdge from './CustomEdge'
 import CanvasToolbar from './CanvasToolbar'
@@ -20,7 +21,7 @@ const edgeTypes = { custom: CustomEdge }
 function FlowCanvasInner() {
   const { id: projectIdStr } = useParams()
   const projectId = Number(projectIdStr)
-  const { project, models, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
+  const { project, models, error, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
 
   const [projectName, setProjectName] = useState('')
 
@@ -79,7 +80,7 @@ function FlowCanvasInner() {
 
   const handleAddNode = useCallback(() => {
     if (models.length === 0) {
-      alert('请先在管理员页面添加模型')
+      toast.error('请先在管理员页面添加模型')
       return
     }
     const center = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 300 }
@@ -103,12 +104,28 @@ function FlowCanvasInner() {
     }
   }, [projectId])
 
-  if (!project) {
+  if (!project && !error.message) {
     return <div className="flex items-center justify-center h-screen bg-gray-950 text-white">加载中...</div>
+  }
+
+  if (!project && error.message) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-950">
+        <div className="bg-red-900/50 border border-red-700 rounded-lg px-6 py-4 max-w-md">
+          <h2 className="text-red-300 text-lg font-semibold mb-2">Failed to load project</h2>
+          <p className="text-red-400 text-sm">{error.message}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="h-screen w-screen">
+      {error.message && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-900/80 border border-red-700 rounded-lg px-4 py-2 text-red-300 text-sm shadow-lg">
+          {error.message}
+        </div>
+      )}
       <CanvasToolbar
         projectName={projectName}
         onAddNode={handleAddNode}

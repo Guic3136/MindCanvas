@@ -8,20 +8,14 @@ import FlowCanvas from './components/Canvas/FlowCanvas'
 import AdminLayout from './components/AdminPanel/AdminLayout'
 
 function App() {
-  const { user, token, isLoading, setUser, setLoading, logout } = useAuthStore()
+  const { user, isLoading, setUser, setLoading, logout } = useAuthStore()
 
   useEffect(() => {
-    if (token && !user) {
-      getMe()
-        .then(setUser)
-        .catch(() => {
-          logout()
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
-  }, [token, user, setUser, setLoading, logout])
+    getMe()
+      .then(setUser)
+      .catch(() => logout())
+      .finally(() => setLoading(false))
+  }, [setUser, setLoading, logout])
 
   if (isLoading) {
     return (
@@ -47,7 +41,7 @@ function App() {
       />
       <Route
         path="/admin"
-        element={user ? <AdminLayout /> : <Navigate to="/login" />}
+        element={user?.is_admin ? <AdminLayout /> : <Navigate to="/" />}
       />
     </Routes>
   )

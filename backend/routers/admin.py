@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import hash_password, mask_secret
@@ -7,7 +7,7 @@ from models.db import User, ModelProvider, Model
 from schemas.admin import (
     ProviderCreate, ProviderUpdate, ProviderResponse,
     ModelCreate, ModelUpdate, ModelResponse,
-    UserCreate, UserListResponse,
+    UserCreate, UserListResponse, PaginatedResponse,
 )
 from routers.auth import get_current_user
 
@@ -22,17 +22,26 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 # --- Provider CRUD ---
 
-@router.get("/providers", response_model=list[ProviderResponse])
-async def list_providers(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    result = await db.execute(select(ModelProvider).order_by(ModelProvider.id))
+@router.get("/providers", response_model=PaginatedResponse[ProviderResponse])
+async def list_providers(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    total = (await db.execute(select(func.count()).select_from(ModelProvider))).scalar_one()
+    result = await db.execute(select(ModelProvider).order_by(ModelProvider.id).offset(skip).limit(limit))
     providers = result.scalars().all()
-    return [
-        ProviderResponse(
-            id=p.id, name=p.name, base_url=p.base_url,
-            api_key_masked=mask_secret(p.api_key), created_at=p.created_at,
-        )
-        for p in providers
-    ]
+    return PaginatedResponse(
+        items=[
+            ProviderResponse(
+                id=p.id, name=p.name, base_url=p.base_url,
+                api_key_masked=mask_secret(p.api_key), created_at=p.created_at,
+            )
+            for p in providers
+        ],
+        total=total, skip=skip, limit=limit,
+    )
 
 
 @router.post("/providers", response_model=ProviderResponse)
@@ -79,10 +88,17 @@ async def delete_provider(pid: int, db: AsyncSession = Depends(get_db), _: User 
 
 # --- Model CRUD ---
 
-@router.get("/models", response_model=list[ModelResponse])
-async def list_models(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    result = await db.execute(select(Model).order_by(Model.id))
-    return result.scalars().all()
+@router.get("/models", response_model=PaginatedResponse[ModelResponse])
+async def list_models(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    total = (await db.execute(select(func.count()).select_from(Model))).scalar_one()
+    result = await db.execute(select(Model).order_by(Model.id).offset(skip).limit(limit))
+    items = result.scalars().all()
+    return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.post("/models", response_model=ModelResponse)
@@ -125,10 +141,17 @@ async def delete_model(mid: int, db: AsyncSession = Depends(get_db), _: User = D
 
 # --- User Management ---
 
-@router.get("/users", response_model=list[UserListResponse])
-async def list_users(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    result = await db.execute(select(User).order_by(User.id))
-    return result.scalars().all()
+@router.get("/users", response_model=PaginatedResponse[UserListResponse])
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    total = (await db.execute(select(func.count()).select_from(User))).scalar_one()
+    result = await db.execute(select(User).order_by(User.id).offset(skip).limit(limit))
+    items = result.scalars().all()
+    return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.post("/users", response_model=UserListResponse)

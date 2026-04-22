@@ -9,7 +9,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const setToken = useAuthStore((s) => s.setToken)
   const setUser = useAuthStore((s) => s.setUser)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,8 +16,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const { access_token } = await login(username, password)
-      setToken(access_token)
+      await login(username, password)
       const user = await getMe()
       setUser(user)
       navigate('/')

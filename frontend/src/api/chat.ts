@@ -56,16 +56,15 @@ export function chatStream(
   onDone: (messageId: number) => void,
   onError: (error: string) => void
 ) {
-  const token = localStorage.getItem('token')
   const controller = new AbortController()
 
   fetch(`/api/projects/${projectId}/nodes/${nodeId}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ message }),
+    credentials: 'include',
     signal: controller.signal,
   })
     .then(async (response) => {

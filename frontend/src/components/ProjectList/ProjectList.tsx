@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Settings } from 'lucide-react'
+import { Plus, Trash2, Settings, X } from 'lucide-react'
 import * as projectApi from '../../api/project'
 import { useAuthStore } from '../../stores/authStore'
 import type { ProjectListItem } from '../../types'
@@ -8,28 +8,32 @@ import type { ProjectListItem } from '../../types'
 export default function ProjectList() {
   const [projects, setProjects] = useState<ProjectListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
 
   const load = async () => {
     setLoading(true)
-    const list = await projectApi.listProjects()
-    setProjects(list)
+    const resp = await projectApi.listProjects()
+    setProjects(resp.items)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [])
 
   const handleCreate = async () => {
-    const name = prompt('项目名称：')
-    if (!name) return
-    const project = await projectApi.createProject(name)
+    if (!newProjectName.trim()) return
+    const project = await projectApi.createProject(newProjectName.trim())
+    setNewProjectName('')
+    setShowCreateModal(false)
     navigate(`/canvas/${project.id}`)
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定删除此项目？')) return
     await projectApi.deleteProject(id)
+    setDeleteTarget(null)
     load()
   }
 
@@ -52,7 +56,7 @@ export default function ProjectList() {
             <button onClick={logout} className="text-sm text-gray-400 hover:text-white">
               退出
             </button>
-            <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
+            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
               <Plus size={18} /> 新建项目
             </button>
           </div>
@@ -72,7 +76,7 @@ export default function ProjectList() {
                   <p className="text-sm text-gray-500">{new Date(p.updated_at).toLocaleString()}</p>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }}
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(p.id) }}
                   className="p-2 text-gray-500 hover:text-red-400"
                 >
                   <Trash2 size={18} />
@@ -82,6 +86,42 @@ export default function ProjectList() {
           </div>
         )}
       </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">新建项目</h3>
+              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <input
+              autoFocus
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
+              placeholder="项目名称"
+              className="w-full bg-gray-800 text-white rounded px-3 py-2 text-sm outline-none border border-gray-700"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">取消</button>
+              <button onClick={handleCreate} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm">创建</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-80 space-y-4">
+            <h3 className="text-lg font-medium">确认删除</h3>
+            <p className="text-sm text-gray-400">确定删除此项目？此操作不可撤销。</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">取消</button>
+              <button onClick={() => handleDelete(deleteTarget)} className="px-4 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm">删除</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

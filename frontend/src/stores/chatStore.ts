@@ -6,24 +6,37 @@ interface ChatState {
   messages: Record<number, Message[]>
   streaming: Record<number, string>
   loading: Record<number, boolean>
+  errors: Record<number, string | null>
 
   loadMessages: (projectId: number, nodeId: number) => Promise<void>
   sendMessage: (projectId: number, nodeId: number, message: string) => void
   clearStreaming: (nodeId: number) => void
+  clearNodeMessages: (nodeId: number) => void
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: {},
   streaming: {},
   loading: {},
+  errors: {},
 
   loadMessages: async (projectId, nodeId) => {
-    set((s) => ({ loading: { ...s.loading, [nodeId]: true } }))
-    const msgs = await chatApi.getMessages(projectId, nodeId)
-    set((s) => ({
-      messages: { ...s.messages, [nodeId]: msgs },
-      loading: { ...s.loading, [nodeId]: false },
-    }))
+    try {
+      set((s) => ({ loading: { ...s.loading, [nodeId]: true }, errors: { ...s.errors, [nodeId]: null } }))
+      const msgs = await chatApi.getMessages(projectId, nodeId)
+      set((s) => ({
+        messages: { ...s.messages, [nodeId]: msgs },
+        loading: { ...s.loading, [nodeId]: false },
+        errors: { ...s.errors, [nodeId]: null },
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load messages'
+      set((s) => ({
+        loading: { ...s.loading, [nodeId]: false },
+        errors: { ...s.errors, [nodeId]: message },
+      }))
+      console.error('[chatStore] loadMessages failed:', err)
+    }
   },
 
   sendMessage: (projectId, nodeId, message) => {
@@ -36,6 +49,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((s) => ({
       messages: { ...s.messages, [nodeId]: [...(s.messages[nodeId] || []), tempUserMsg] },
       streaming: { ...s.streaming, [nodeId]: '' },
+      errors: { ...s.errors, [nodeId]: null },
     }))
 
     chatApi.chatStream(
@@ -56,11 +70,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         })
       },
       (error) => {
-        console.error('Chat error:', error)
+        console.error('[chatStore] sendMessage error:', error)
+        const errorMessage = typeof error === 'string' ? error : 'Failed to send. Retry.'
         set((s) => {
           const newStreaming = { ...s.streaming }
           delete newStreaming[nodeId]
-          return { streaming: newStreaming }
+          const msgs = s.messages[nodeId] || []
+          const updated = msgs.map((m) =>
+            m.id === tempUserMsg.id ? { ...m, content: errorMessage } : m
+          )
+          return {
+            streaming: newStreaming,
+            messages: { ...s.messages, [nodeId]: updated },
+            errors: { ...s.errors, [nodeId]: errorMessage },
+          }
         })
       }
     )
@@ -71,6 +94,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const newStreaming = { ...s.streaming }
       delete newStreaming[nodeId]
       return { streaming: newStreaming }
+    })
+  },
+
+  clearNodeMessages: (nodeId) => {
+    set((s) => {
+      const newMessages = { ...s.messages }
+      delete newMessages[nodeId]
+      const newLoading = { ...s.loading }
+      delete newLoading[nodeId]
+      const newErrors = { ...s.errors }
+      delete newErrors[nodeId]
+      return { messages: newMessages, loading: newLoading, errors: newErrors }
     })
   },
 }))

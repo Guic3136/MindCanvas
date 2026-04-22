@@ -9,7 +9,7 @@ export default function UserManagement() {
   const [showAdd, setShowAdd] = useState(false)
   const [newUser, setNewUser] = useState({ username: '', password: '' })
 
-  const load = async () => setUsers(await adminApi.listUsers())
+  const load = async () => { const resp = await adminApi.listUsers(); setUsers(resp.items) }
   useEffect(() => { load() }, [])
 
   const handleAdd = async () => {

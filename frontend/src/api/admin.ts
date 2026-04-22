@@ -1,8 +1,8 @@
 import client from './client'
-import type { ModelProvider, ModelInfo } from '../types'
+import type { ModelProvider, ModelInfo, PaginatedResponse } from '../types'
 
-export async function listProviders(): Promise<ModelProvider[]> {
-  const { data } = await client.get<ModelProvider[]>('/admin/providers')
+export async function listProviders(): Promise<PaginatedResponse<ModelProvider>> {
+  const { data } = await client.get<PaginatedResponse<ModelProvider>>('/admin/providers')
   return data
 }
 
@@ -20,8 +20,8 @@ export async function deleteProvider(id: number): Promise<void> {
   await client.delete(`/admin/providers/${id}`)
 }
 
-export async function listModels(): Promise<ModelInfo[]> {
-  const { data } = await client.get<ModelInfo[]>('/admin/models')
+export async function listModels(): Promise<PaginatedResponse<ModelInfo>> {
+  const { data } = await client.get<PaginatedResponse<ModelInfo>>('/admin/models')
   return data
 }
 
@@ -46,8 +46,8 @@ interface UserListItem {
   created_at: string
 }
 
-export async function listUsers(): Promise<UserListItem[]> {
-  const { data } = await client.get<UserListItem[]>('/admin/users')
+export async function listUsers(): Promise<PaginatedResponse<UserListItem>> {
+  const { data } = await client.get<PaginatedResponse<UserListItem>>('/admin/users')
   return data
 }
 

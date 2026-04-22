@@ -16,11 +16,13 @@ interface ChatNodeData {
 export default function ChatNode({ data, selected }: NodeProps) {
   const { label, model_id, db_node_id, project_id } = data as unknown as ChatNodeData
   const { models, updateNodeLabel, updateNodeModel } = useCanvasStore()
-  const { messages, streaming, loadMessages, sendMessage } = useChatStore()
+  const { messages, streaming, loading, errors, loadMessages, sendMessage } = useChatStore()
 
   const nodeMessages = messages[db_node_id] || []
   const nodeStreaming = streaming[db_node_id] || ''
   const isStreaming = db_node_id in streaming
+  const isLoading = loading[db_node_id] || false
+  const nodeError = errors[db_node_id]
 
   useEffect(() => {
     loadMessages(project_id, db_node_id)
@@ -38,7 +40,19 @@ export default function ChatNode({ data, selected }: NodeProps) {
         onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}
         onModelChange={(newModelId) => updateNodeModel(db_node_id, newModelId)}
       />
-      <ChatNodeMessages messages={nodeMessages} streaming={nodeStreaming} />
+      {nodeError && (
+        <div className="bg-red-900/50 border-b border-red-700 px-3 py-2 text-red-300 text-xs">
+          {nodeError}
+        </div>
+      )}
+      {isLoading && nodeMessages.length === 0 && (
+        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+          Loading messages...
+        </div>
+      )}
+      {(!isLoading || nodeMessages.length > 0) && (
+        <ChatNodeMessages messages={nodeMessages} streaming={nodeStreaming} />
+      )}
       <ChatNodeInput
         onSend={(msg) => sendMessage(project_id, db_node_id, msg)}
         disabled={isStreaming}

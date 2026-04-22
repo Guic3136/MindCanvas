@@ -1,8 +1,8 @@
 import client from './client'
-import type { Project, ProjectListItem } from '../types'
+import type { Project, ProjectListItem, PaginatedResponse } from '../types'
 
-export async function listProjects(): Promise<ProjectListItem[]> {
-  const { data } = await client.get<ProjectListItem[]>('/projects')
+export async function listProjects(): Promise<PaginatedResponse<ProjectListItem>> {
+  const { data } = await client.get<PaginatedResponse<ProjectListItem>>('/projects')
   return data
 }
 
