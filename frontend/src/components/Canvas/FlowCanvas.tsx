@@ -74,9 +74,23 @@ function FlowCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
 
-  // Sync when project changes
-  useEffect(() => { setNodes(rfNodes) }, [rfNodes, setNodes])
-  useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
+  // Sync node add/remove only (position changes are handled by onNodesChange + onNodeDragStop)
+  useEffect(() => {
+    const currentIds = new Set(nodes.map((n) => n.id))
+    const incomingIds = new Set(rfNodes.map((n) => n.id))
+    if (currentIds.size !== incomingIds.size || [...currentIds].some((id) => !incomingIds.has(id))) {
+      setNodes(rfNodes)
+    }
+  }, [rfNodes, setNodes])
+
+  // Sync edge add/remove only
+  useEffect(() => {
+    const currentIds = new Set(edges.map((e) => e.id))
+    const incomingIds = new Set(rfEdges.map((e) => e.id))
+    if (currentIds.size !== incomingIds.size || [...currentIds].some((id) => !incomingIds.has(id))) {
+      setEdges(rfEdges)
+    }
+  }, [rfEdges, setEdges])
 
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
