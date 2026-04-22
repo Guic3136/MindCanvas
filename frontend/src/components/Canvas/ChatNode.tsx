@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { NodeProps } from '@xyflow/react'
+import { ChevronDown, Check } from 'lucide-react'
 import ChatNodeHeader from './ChatNodeHeader'
 import ChatNodeMessages from './ChatNodeMessages'
 import ChatNodeInput from './ChatNodeInput'
 import { useCanvasStore } from '../../stores/canvasStore'
 import { useChatStore } from '../../stores/chatStore'
+import type { ModelInfo } from '../../types'
 
 interface ChatNodeData {
   label: string
@@ -50,21 +53,82 @@ export default function ChatNode({ data, selected }: NodeProps) {
       {(!isLoading || nodeMessages.length > 0) && (
         <ChatNodeMessages messages={nodeMessages} streaming={nodeStreaming} />
       )}
-      <div className="px-3 pb-2">
-        <select
-          value={model_id}
-          onChange={(e) => updateNodeModel(db_node_id, Number(e.target.value))}
-          className="w-full bg-bg-input text-text-primary text-sm rounded px-2 py-1.5 outline-none transition-ui border border-border"
-        >
-          {models.map((m) => (
-            <option key={m.id} value={m.id}>{m.display_name}</option>
-          ))}
-        </select>
-      </div>
+      <ModelSelector
+        value={model_id}
+        models={models}
+        onChange={(id) => updateNodeModel(db_node_id, id)}
+      />
       <ChatNodeInput
         onSend={(msg) => sendMessage(project_id, db_node_id, msg)}
         disabled={isStreaming}
       />
+    </div>
+  )
+}
+
+interface ModelSelectorProps {
+  value: number
+  models: ModelInfo[]
+  onChange: (modelId: number) => void
+}
+
+function ModelSelector({ value, models, onChange }: ModelSelectorProps) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [rect, setRect] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      setRect(triggerRef.current.getBoundingClientRect())
+    } else {
+      setRect(null)
+    }
+  }, [open])
+
+  const current = models.find((m) => m.id === value)
+
+  return (
+    <div className="px-3 pb-2">
+      <button
+        ref={triggerRef}
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between bg-bg-input text-text-primary text-sm rounded px-3 py-1.5 outline-none transition-ui border border-border hover:border-border-hover"
+      >
+        <span>{current?.display_name || '选择模型'}</span>
+        <ChevronDown size={14} className={`text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && rect && createPortal(
+        <div
+          className="bg-bg-elevated border border-border-strong rounded-lg shadow-popover overflow-hidden z-[9999]"
+          style={{
+            position: 'fixed',
+            left: rect.left,
+            bottom: window.innerHeight - rect.top + 4,
+            width: rect.width,
+          }}
+        >
+          {models.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => { onChange(m.id); setOpen(false) }}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-ui"
+            >
+              <span>{m.display_name}</span>
+              {m.id === value && <Check size={14} className="text-brand" />}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
