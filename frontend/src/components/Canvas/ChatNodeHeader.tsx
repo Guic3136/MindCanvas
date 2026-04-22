@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
-import { Pencil, Check } from 'lucide-react'
+import { Pencil, Check, Trash2 } from 'lucide-react'
 
 interface Props {
   label: string
   onLabelChange: (label: string) => void
+  onDelete?: () => void
 }
 
-export default function ChatNodeHeader({ label, onLabelChange }: Props) {
+export default function ChatNodeHeader({ label, onLabelChange, onDelete }: Props) {
   const [editing, setEditing] = useState(false)
   const [editLabel, setEditLabel] = useState(label)
 
@@ -37,6 +38,11 @@ export default function ChatNodeHeader({ label, onLabelChange }: Props) {
       ) : (
         <button onClick={() => { setEditLabel(label); setEditing(true) }} className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-sm transition-ui">
           {label} <Pencil size={14} />
+        </button>
+      )}
+      {onDelete && (
+        <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="text-text-muted hover:text-danger transition-ui" aria-label="删除节点">
+          <Trash2 size={14} />
         </button>
       )}
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-brand !border-2 !border-bg-raised" />

@@ -18,7 +18,7 @@ interface ChatNodeData {
 
 export default function ChatNode({ data, selected }: NodeProps) {
   const { label, model_id, db_node_id, project_id } = data as unknown as ChatNodeData
-  const { models, updateNodeLabel, updateNodeModel } = useCanvasStore()
+  const { models, updateNodeLabel, updateNodeModel, removeNode } = useCanvasStore()
   const { messages, streaming, loading, errors, loadMessages, sendMessage } = useChatStore()
 
   const nodeMessages = messages[db_node_id] || []
@@ -39,6 +39,7 @@ export default function ChatNode({ data, selected }: NodeProps) {
       <ChatNodeHeader
         label={label}
         onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}
+        onDelete={() => removeNode(db_node_id)}
       />
       {nodeError && (
         <div className="bg-danger-muted border-b border-danger/20 px-3 py-2 text-danger text-xs">
