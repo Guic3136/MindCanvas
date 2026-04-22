@@ -12,7 +12,10 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = '/login'
+      const path = window.location.pathname
+      if (path !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
