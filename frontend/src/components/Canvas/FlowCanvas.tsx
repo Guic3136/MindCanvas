@@ -8,6 +8,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { MousePointer2, GitBranchPlus, Send, X, HelpCircle } from 'lucide-react'
 import ChatNode from './ChatNode'
 import CustomEdge from './CustomEdge'
 import CanvasToolbar from './CanvasToolbar'
@@ -24,6 +25,14 @@ function FlowCanvasInner() {
   const { project, models, error, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
 
   const [projectName, setProjectName] = useState('')
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Show onboarding when project loads with no nodes
+  useEffect(() => {
+    if (project && project.nodes.length === 0) {
+      setShowOnboarding(true)
+    }
+  }, [project])
 
   useEffect(() => {
     loadProject(projectId)
@@ -105,15 +114,15 @@ function FlowCanvasInner() {
   }, [projectId])
 
   if (!project && !error.message) {
-    return <div className="flex items-center justify-center h-screen bg-gray-950 text-white">加载中...</div>
+    return <div className="flex items-center justify-center h-screen bg-bg"><div className="spinner-refined" role="status" aria-label="正在加载项目" /></div>
   }
 
   if (!project && error.message) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-950">
-        <div className="bg-red-900/50 border border-red-700 rounded-lg px-6 py-4 max-w-md">
-          <h2 className="text-red-300 text-lg font-semibold mb-2">Failed to load project</h2>
-          <p className="text-red-400 text-sm">{error.message}</p>
+      <div className="flex items-center justify-center h-screen bg-bg">
+        <div className="bg-danger-muted border border-danger/20 rounded-lg px-6 py-4 max-w-md">
+          <h2 className="text-danger text-lg font-semibold mb-2">加载项目失败</h2>
+          <p className="text-danger/80 text-sm">{error.message}</p>
         </div>
       </div>
     )
@@ -122,7 +131,7 @@ function FlowCanvasInner() {
   return (
     <div className="h-screen w-screen">
       {error.message && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-900/80 border border-red-700 rounded-lg px-4 py-2 text-red-300 text-sm shadow-lg">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-danger-muted border border-danger/20 rounded-lg px-4 py-2 text-danger text-sm shadow-lg backdrop-blur-sm" role="alert" aria-live="assertive">
           {error.message}
         </div>
       )}
@@ -142,20 +151,66 @@ function FlowCanvasInner() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        className="bg-gray-950"
+        className="bg-bg"
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#374151" gap={20} />
-        <Controls className="!bg-gray-800 !border-gray-700 [&>button]:!bg-gray-800 [&>button]:!border-gray-700 [&>button]:!text-white [&>button:hover]:!bg-gray-700" />
-        <MiniMap nodeColor="#3b82f6" maskColor="rgba(0,0,0,0.8)" className="!bg-gray-900 !border-gray-700" />
+        <Background color="rgba(106,95,193,0.15)" gap={20} />
+        <Controls className="!bg-bg-raised !border-border [&>button]:!bg-bg-raised [&>button]:!border-border [&>button]:!text-text-primary [&>button:hover]:!bg-bg-hover" />
+        <MiniMap nodeColor="#c2ef4e" maskColor="rgba(31,22,51,0.85)" className="!bg-bg-raised !border-border" />
         <svg>
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6a5fc1" />
             </marker>
           </defs>
         </svg>
       </ReactFlow>
+
+      {/* Help button - always visible, re-opens onboarding */}
+      <div className="fixed bottom-4 right-4 z-10">
+        <button
+          onClick={() => setShowOnboarding(true)}
+          className="p-2.5 bg-bg-raised border border-border rounded-lg text-text-muted hover:text-text-primary hover:border-border-hover shadow-lg transition-ui backdrop-blur-sm"
+          aria-label="查看使用帮助"
+        >
+          <HelpCircle size={18} />
+        </button>
+      </div>
+
+      {showOnboarding && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-bg-raised border border-border-strong rounded-xl p-8 w-96 relative shadow-popover">
+            <button onClick={() => setShowOnboarding(false)} className="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-ui" aria-label="关闭引导">
+              <X size={18} />
+            </button>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">开始使用 MindCanvas</h2>
+            <p className="text-text-secondary text-sm mb-6">一个可视化的 AI 提示词调试工作区。按以下步骤开始：</p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-brand-muted rounded-lg text-brand"><MousePointer2 size={18} /></div>
+                <div>
+                  <p className="text-text-primary text-sm font-medium">新建节点</p>
+                  <p className="text-text-muted text-xs">点击上方「新建节点」创建一个 AI 对话卡片</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-accent-muted rounded-lg text-accent"><GitBranchPlus size={18} /></div>
+                <div>
+                  <p className="text-text-primary text-sm font-medium">连接节点</p>
+                  <p className="text-text-muted text-xs">从一个节点的输出拖到另一个节点的输入，建立调试链</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-warning-muted rounded-lg text-warning"><Send size={18} /></div>
+                <div>
+                  <p className="text-text-primary text-sm font-medium">发送消息</p>
+                  <p className="text-text-muted text-xs">在节点底部输入提示词，发送后查看 AI 回复</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

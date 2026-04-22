@@ -23,7 +23,7 @@ export default function CustomEdge({
     <>
       <BaseEdge
         path={edgePath}
-        style={{ stroke: selected ? '#3b82f6' : '#6b7280', strokeWidth: selected ? 2 : 1.5 }}
+        style={{ stroke: selected ? 'var(--color-brand)' : '#6a5fc1', strokeWidth: selected ? 2.5 : 1.5 }}
         markerEnd="url(#arrow)"
       />
       <EdgeLabelRenderer>
@@ -33,30 +33,31 @@ export default function CustomEdge({
         >
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="bg-gray-800 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white hover:border-gray-400"
+            className="bg-bg-elevated border border-border-strong rounded-full p-2.5 text-text-muted hover:text-text-primary hover:border-border-hover shadow-popover transition-ui"
+            aria-label="连线设置"
           >
-            <Settings size={12} />
+            <Settings size={16} />
           </button>
           {showMenu && (
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-2 space-y-1 z-50 min-w-32">
+            <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-bg-elevated border border-border-strong rounded-lg shadow-popover p-2 space-y-1 z-50 min-w-32">
               <button
                 onClick={() => { edgeData.onModeChange(edgeData.db_edge_id, 'full_history'); setShowMenu(false) }}
-                className={`block w-full text-left text-xs px-2 py-1 rounded ${edgeData.context_mode === 'full_history' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                className={`block w-full text-left text-xs px-2 py-1 rounded transition-ui ${edgeData.context_mode === 'full_history' ? 'bg-brand text-text-inverse' : 'text-text-secondary hover:bg-bg-hover'}`}
               >
                 整条历史
               </button>
               <button
                 onClick={() => { edgeData.onModeChange(edgeData.db_edge_id, 'last_reply'); setShowMenu(false) }}
-                className={`block w-full text-left text-xs px-2 py-1 rounded ${edgeData.context_mode === 'last_reply' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                className={`block w-full text-left text-xs px-2 py-1 rounded transition-ui ${edgeData.context_mode === 'last_reply' ? 'bg-brand text-text-inverse' : 'text-text-secondary hover:bg-bg-hover'}`}
               >
                 仅最后回复
               </button>
-              <hr className="border-gray-600" />
+              <hr className="border-border" />
               <button
                 onClick={() => { edgeData.onRemove(edgeData.db_edge_id); setShowMenu(false) }}
-                className="block w-full text-left text-xs px-2 py-1 rounded text-red-400 hover:bg-gray-700"
+                className="block w-full text-left text-xs px-2 py-1 rounded text-danger hover:bg-bg-hover transition-ui"
               >
-                <X size={12} className="inline mr-1" /> 删除连线
+                <X size={14} className="inline mr-1" /> 删除连线
               </button>
             </div>
           )}

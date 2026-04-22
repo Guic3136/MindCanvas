@@ -30,8 +30,8 @@ export default function ChatNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`bg-gray-900 border rounded-lg shadow-xl flex flex-col ${selected ? 'border-blue-500' : 'border-gray-700'}`}
-      style={{ width: 400, height: 500 }}
+      className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+      style={{ width: 'min(400px, 90vw)', height: 500 }}
     >
       <ChatNodeHeader
         label={label}
@@ -41,13 +41,13 @@ export default function ChatNode({ data, selected }: NodeProps) {
         onModelChange={(newModelId) => updateNodeModel(db_node_id, newModelId)}
       />
       {nodeError && (
-        <div className="bg-red-900/50 border-b border-red-700 px-3 py-2 text-red-300 text-xs">
+        <div className="bg-danger-muted border-b border-danger/20 px-3 py-2 text-danger text-xs">
           {nodeError}
         </div>
       )}
       {isLoading && nodeMessages.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-          Loading messages...
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">
+          加载消息中...
         </div>
       )}
       {(!isLoading || nodeMessages.length > 0) && (

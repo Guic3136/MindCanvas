@@ -23,12 +23,12 @@ export default function ChatNodeHeader({ label, modelId, models, onLabelChange, 
   }
 
   return (
-    <div className="flex items-center gap-2 p-3 border-b border-gray-700 bg-gray-800/50">
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-gray-900" />
+    <div className="flex items-center gap-2 p-3 border-b border-border bg-bg-surface/60 inset-highlight">
+      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-brand !border-2 !border-bg-raised" />
       <select
         value={modelId}
         onChange={(e) => onModelChange(Number(e.target.value))}
-        className="flex-1 bg-gray-700 text-white text-sm rounded px-2 py-1 outline-none"
+        className="flex-1 bg-bg-input text-text-primary text-sm rounded px-2 py-1 outline-none transition-ui"
       >
         {models.map((m) => (
           <option key={m.id} value={m.id}>{m.display_name}</option>
@@ -40,19 +40,19 @@ export default function ChatNodeHeader({ label, modelId, models, onLabelChange, 
             value={editLabel}
             onChange={(e) => setEditLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleLabelSubmit()}
-            className="bg-gray-700 text-white text-sm rounded px-2 py-1 w-24 outline-none"
+            className="bg-bg-input text-text-primary text-sm rounded px-2 py-1 w-24 outline-none"
             autoFocus
           />
-          <button onClick={handleLabelSubmit} className="text-green-400 hover:text-green-300">
-            <Check size={14} />
+          <button onClick={handleLabelSubmit} className="text-brand hover:text-brand-hover transition-ui">
+            <Check size={16} />
           </button>
         </div>
       ) : (
-        <button onClick={() => { setEditLabel(label); setEditing(true) }} className="flex items-center gap-1 text-gray-400 hover:text-white text-sm">
-          {label} <Pencil size={12} />
+        <button onClick={() => { setEditLabel(label); setEditing(true) }} className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-sm transition-ui">
+          {label} <Pencil size={14} />
         </button>
       )}
-      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-green-500 !border-2 !border-gray-900" />
+      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-brand !border-2 !border-bg-raised" />
     </div>
   )
 }

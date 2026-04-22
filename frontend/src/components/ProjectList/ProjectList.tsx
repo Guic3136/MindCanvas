@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Settings, X } from 'lucide-react'
+import { toast } from 'sonner'
 import * as projectApi from '../../api/project'
 import { useAuthStore } from '../../stores/authStore'
+import { useModal } from '../../hooks/useModal'
 import type { ProjectListItem } from '../../types'
 
 export default function ProjectList() {
@@ -13,6 +15,8 @@ export default function ProjectList() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const createModal = useModal(showCreateModal)
+  const deleteModal = useModal(deleteTarget !== null)
 
   const load = async () => {
     setLoading(true)
@@ -28,56 +32,67 @@ export default function ProjectList() {
     const project = await projectApi.createProject(newProjectName.trim())
     setNewProjectName('')
     setShowCreateModal(false)
+    toast.success(`项目「${project.name}」已创建`)
     navigate(`/canvas/${project.id}`)
   }
 
   const handleDelete = async (id: number) => {
     await projectApi.deleteProject(id)
     setDeleteTarget(null)
+    toast.success('项目已删除')
     load()
   }
 
-  if (loading) return <div className="text-gray-400 p-8">加载中...</div>
+  if (loading) return <div className="flex items-center justify-center h-screen bg-bg"><div className="spinner-refined" role="status" aria-label="正在加载项目列表" /></div>
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
+    <div className="min-h-screen bg-bg text-text-primary p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold">MindCanvas</h1>
-            {user?.is_admin && (
-              <a href="/admin" className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
-                <Settings size={16} /> 管理
-              </a>
-            )}
+            <h1 className="text-2xl sm:text-3xl font-semibold">MindCanvas</h1>
+            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-text-inverse rounded text-sm transition-ui">
+              <Plus size={18} /> 新建项目
+            </button>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-sm">{user?.username}</span>
-            <button onClick={logout} className="text-sm text-gray-400 hover:text-white">
+            {user?.is_admin && (
+              <a href="/admin" className="p-2.5 text-text-muted hover:text-text-primary rounded" title="管理面板" aria-label="管理面板">
+                <Settings size={18} />
+              </a>
+            )}
+            <span className="text-text-muted text-sm hidden sm:inline">{user?.username}</span>
+            <button onClick={logout} className="text-sm text-text-muted hover:text-text-primary">
               退出
-            </button>
-            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded">
-              <Plus size={18} /> 新建项目
             </button>
           </div>
         </div>
         {projects.length === 0 ? (
-          <p className="text-gray-500 text-center mt-20">还没有项目，点击上方创建一个</p>
+          <div className="flex flex-col items-center justify-center mt-20 text-center">
+            <div className="w-16 h-16 rounded-full bg-bg-surface flex items-center justify-center mb-4 glow-accent">
+              <Plus size={32} className="text-text-muted" />
+            </div>
+            <h2 className="text-lg font-medium text-text-secondary mb-2">创建你的第一个项目</h2>
+            <p className="text-text-muted text-sm max-w-xs mb-6">项目是你探索 AI 提示词的工作空间，每个项目包含独立的画布和调试会话。</p>
+            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-text-inverse text-sm rounded-lg font-medium transition-ui">
+              <Plus size={18} /> 创建项目
+            </button>
+          </div>
         ) : (
           <div className="grid gap-4">
             {projects.map((p) => (
               <div
                 key={p.id}
                 onClick={() => navigate(`/canvas/${p.id}`)}
-                className="flex items-center justify-between p-4 bg-gray-900 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-4 bg-bg-raised rounded-lg hover:bg-bg-hover cursor-pointer transition-colors border border-border card-hover"
               >
                 <div>
-                  <h2 className="text-lg font-medium">{p.name}</h2>
-                  <p className="text-sm text-gray-500">{new Date(p.updated_at).toLocaleString()}</p>
+                  <h2 className="text-lg font-medium text-text-primary">{p.name}</h2>
+                  <p className="text-sm text-text-muted">{new Date(p.updated_at).toLocaleString()}</p>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(p.id) }}
-                  className="p-2 text-gray-500 hover:text-red-400"
+                  className="p-2.5 text-text-muted hover:text-danger"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -88,11 +103,11 @@ export default function ProjectList() {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="创建新项目" ref={createModal.containerRef}>
+          <div className="bg-bg-raised border border-border-strong rounded-lg p-6 w-96 space-y-4 shadow-popover">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">新建项目</h3>
-              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="text-gray-400 hover:text-white"><X size={18} /></button>
+              <h3 className="text-lg font-medium text-text-primary">新建项目</h3>
+              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="text-text-secondary hover:text-text-primary transition-ui"><X size={18} /></button>
             </div>
             <input
               autoFocus
@@ -100,24 +115,24 @@ export default function ProjectList() {
               onChange={(e) => setNewProjectName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
               placeholder="项目名称"
-              className="w-full bg-gray-800 text-white rounded px-3 py-2 text-sm outline-none border border-gray-700"
+              className="w-full bg-bg-input text-text-primary rounded-md px-3 py-2 text-sm outline-none border border-border"
             />
             <div className="flex gap-2 justify-end">
-              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">取消</button>
-              <button onClick={handleCreate} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm">创建</button>
+              <button onClick={() => { setShowCreateModal(false); setNewProjectName('') }} className="px-4 py-1.5 bg-bg-surface hover:bg-bg-hover rounded text-sm text-text-secondary transition-ui">取消</button>
+              <button onClick={handleCreate} className="px-4 py-1.5 bg-brand hover:bg-brand-hover text-text-inverse rounded text-sm transition-ui">创建</button>
             </div>
           </div>
         </div>
       )}
 
       {deleteTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-80 space-y-4">
-            <h3 className="text-lg font-medium">确认删除</h3>
-            <p className="text-sm text-gray-400">确定删除此项目？此操作不可撤销。</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="确认删除" ref={deleteModal.containerRef}>
+          <div className="bg-bg-raised border border-border-strong rounded-lg p-6 w-80 space-y-4 shadow-popover">
+            <h3 className="text-lg font-medium text-text-primary">确认删除</h3>
+            <p className="text-sm text-text-secondary">确定删除此项目？此操作不可撤销。</p>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">取消</button>
-              <button onClick={() => handleDelete(deleteTarget)} className="px-4 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm">删除</button>
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-1.5 bg-bg-surface hover:bg-bg-hover rounded text-sm text-text-secondary transition-ui">取消</button>
+              <button onClick={() => handleDelete(deleteTarget)} className="px-4 py-1.5 bg-danger hover:bg-danger-hover text-text-inverse rounded text-sm transition-ui">删除</button>
             </div>
           </div>
         </div>

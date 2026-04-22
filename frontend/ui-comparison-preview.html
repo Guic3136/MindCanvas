@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCanvas UI 升级 — 三套方案对比</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0a0a; color: #e5e5e5; line-height: 1.6; padding: 40px 20px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+    .subtitle { color: #888; margin-bottom: 40px; font-size: 14px; }
+
+    .comparison { max-width: 1400px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; gap: 48px; } }
+
+    .scheme { border-radius: 16px; overflow: hidden; }
+    .scheme-header { padding: 20px 24px; margin-bottom: 20px; border-radius: 12px; }
+    .scheme-header h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .scheme-header p { font-size: 13px; opacity: 0.7; }
+
+    /* ====== SCHEME 1: Precision Teal (推荐) ====== */
+    .scheme-1 .scheme-header { background: #0c0d10; border: 1px solid rgba(255,255,255,0.06); }
+    .scheme-1 .scheme-header h2 { color: #f0f0f3; }
+    .scheme-1 .scheme-header p { color: #6b7080; }
+    .scheme-1 .preview-card {
+      background: #0c0d10; border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px; padding: 24px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .scheme-1 .preview-card h3 { font-size: 16px; font-weight: 600; color: #f0f0f3; margin-bottom: 4px; }
+    .scheme-1 .preview-card .meta { font-size: 12px; color: #6b7080; margin-bottom: 16px; }
+    .scheme-1 .preview-input {
+      background: #14151a; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;
+      padding: 10px 14px; color: #a0a5b0; font-size: 13px; width: 100%; margin-bottom: 12px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .scheme-1 .btn-primary {
+      background: #2dd4a8; color: #06070a; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%;
+      transition: all 150ms ease;
+    }
+    .scheme-1 .btn-primary:hover { background: #22b890; box-shadow: 0 0 20px rgba(45,212,168,0.2); }
+    .scheme-1 .btn-secondary {
+      background: #14151a; color: #a0a5b0; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;
+      padding: 8px 16px; font-size: 13px; cursor: pointer; margin-top: 8px; width: 100%;
+    }
+    .scheme-1 .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+    .scheme-1 .badge-enabled { background: rgba(45,212,168,0.12); color: #2dd4a8; }
+    .scheme-1 .badge-disabled { background: rgba(248,113,113,0.12); color: #f87171; }
+    .scheme-1 .bubble-user { background: #2dd4a8; color: #06070a; border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-1 .bubble-assistant { background: #14151a; color: #a0a5b0; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-1 .edge { height: 2px; background: linear-gradient(90deg, #818cf8, #2dd4a8); border-radius: 1px; margin: 16px 0; position: relative; }
+    .scheme-1 .edge::after { content: '▸'; position: absolute; right: -2px; top: -8px; color: #818cf8; font-size: 14px; }
+    .scheme-1 .glow-dot { width: 8px; height: 8px; background: #2dd4a8; border-radius: 50%; box-shadow: 0 0 12px rgba(45,212,168,0.4); display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+    /* ====== SCHEME 2: Sentry Purple ====== */
+    .scheme-2 .scheme-header { background: #1a1030; border: 1px solid rgba(106,95,193,0.2); }
+    .scheme-2 .scheme-header h2 { color: #f0e8ff; }
+    .scheme-2 .scheme-header p { color: #8a7fb5; }
+    .scheme-2 .preview-card {
+      background: #1a1030; border: 1px solid rgba(106,95,193,0.15);
+      border-radius: 12px; padding: 24px;
+      box-shadow: 0 2px 8px rgba(22,15,36,0.6), 0 0 20px rgba(106,95,193,0.08), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .scheme-2 .preview-card h3 { font-size: 16px; font-weight: 600; color: #f0e8ff; margin-bottom: 4px; }
+    .scheme-2 .preview-card .meta { font-size: 12px; color: #8a7fb5; margin-bottom: 16px; }
+    .scheme-2 .preview-input {
+      background: #150f23; border: 1px solid rgba(106,95,193,0.15); border-radius: 8px;
+      padding: 10px 14px; color: #b0a8c8; font-size: 13px; width: 100%; margin-bottom: 12px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .scheme-2 .btn-primary {
+      background: #c2ef4e; color: #150f23; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;
+      transition: all 150ms ease;
+    }
+    .scheme-2 .btn-primary:hover { background: #d4ff6a; box-shadow: 0 0 24px rgba(194,239,78,0.25); }
+    .scheme-2 .btn-secondary {
+      background: #2a1f4a; color: #b0a8c8; border: 1px solid rgba(106,95,193,0.15); border-radius: 8px;
+      padding: 8px 16px; font-size: 13px; cursor: pointer; margin-top: 8px; width: 100%;
+    }
+    .scheme-2 .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+    .scheme-2 .badge-enabled { background: rgba(194,239,78,0.12); color: #c2ef4e; }
+    .scheme-2 .badge-disabled { background: rgba(255,178,135,0.12); color: #ffb287; }
+    .scheme-2 .bubble-user { background: #6a5fc1; color: #fff; border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-2 .bubble-assistant { background: #150f23; color: #b0a8c8; border: 1px solid rgba(106,95,193,0.12); border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-2 .edge { height: 2px; background: linear-gradient(90deg, #6a5fc1, #c2ef4e); border-radius: 1px; margin: 16px 0; position: relative; }
+    .scheme-2 .edge::after { content: '▸'; position: absolute; right: -2px; top: -8px; color: #6a5fc1; font-size: 14px; }
+    .scheme-2 .glow-dot { width: 8px; height: 8px; background: #c2ef4e; border-radius: 50%; box-shadow: 0 0 12px rgba(194,239,78,0.5); display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+    /* ====== SCHEME 3: Raycast Obsidian ====== */
+    .scheme-3 .scheme-header { background: #101111; border: 1px solid rgba(255,255,255,0.06); }
+    .scheme-3 .scheme-header h2 { color: #f9f9f9; }
+    .scheme-3 .scheme-header p { color: #6a6b6c; }
+    .scheme-3 .preview-card {
+      background: #101111; border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .scheme-3 .preview-card h3 { font-size: 16px; font-weight: 600; color: #f9f9f9; margin-bottom: 4px; letter-spacing: 0.02em; }
+    .scheme-3 .preview-card .meta { font-size: 12px; color: #6a6b6c; margin-bottom: 16px; }
+    .scheme-3 .preview-input {
+      background: #1b1c1e; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+      padding: 10px 14px; color: #9c9c9d; font-size: 13px; width: 100%; margin-bottom: 12px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .scheme-3 .btn-primary {
+      background: #FF6363; color: #fff; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%;
+      transition: all 150ms ease;
+    }
+    .scheme-3 .btn-primary:hover { background: #ff7b7b; box-shadow: 0 0 20px rgba(255,99,99,0.2); }
+    .scheme-3 .btn-secondary {
+      background: #1b1c1e; color: #9c9c9d; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+      padding: 8px 16px; font-size: 13px; cursor: pointer; margin-top: 8px; width: 100%;
+    }
+    .scheme-3 .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+    .scheme-3 .badge-enabled { background: rgba(85,179,255,0.1); color: #55b3ff; }
+    .scheme-3 .badge-disabled { background: rgba(255,99,99,0.1); color: #FF6363; }
+    .scheme-3 .bubble-user { background: #55b3ff; color: #07080a; border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-3 .bubble-assistant { background: #1b1c1e; color: #9c9c9d; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .scheme-3 .edge { height: 2px; background: linear-gradient(90deg, #55b3ff, #FF6363); border-radius: 1px; margin: 16px 0; position: relative; }
+    .scheme-3 .edge::after { content: '▸'; position: absolute; right: -2px; top: -8px; color: #55b3ff; font-size: 14px; }
+    .scheme-3 .glow-dot { width: 8px; height: 8px; background: #55b3ff; border-radius: 50%; box-shadow: 0 0 12px rgba(85,179,255,0.4); display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+    /* ====== CURRENT (参考) ====== */
+    .current { margin-top: 48px; padding: 24px; background: #111827; border: 1px solid #374151; border-radius: 12px; }
+    .current h2 { font-size: 18px; color: #9ca3af; margin-bottom: 16px; }
+    .current-card { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 24px; }
+    .current-card h3 { color: #f9fafb; margin-bottom: 4px; }
+    .current-card .meta { color: #6b7280; font-size: 12px; margin-bottom: 16px; }
+    .current-input { background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 10px 14px; color: #9ca3af; font-size: 13px; width: 100%; margin-bottom: 12px; }
+    .current-btn { background: #3b82f6; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 13px; width: 100%; }
+    .current-bubble-user { background: #3b82f6; color: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+    .current-bubble-assistant { background: #1f2937; color: #9ca3af; border-radius: 8px; padding: 8px 14px; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+
+    .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 8px; }
+    .component-label { font-size: 12px; color: #666; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+    .color-palette { display: flex; gap: 8px; margin-top: 12px; }
+    .color-swatch { width: 24px; height: 24px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); }
+    .swatch-label { font-size: 10px; color: #888; margin-top: 4px; text-align: center; }
+
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 24px 0; }
+
+    .verdict { margin-top: 48px; padding: 24px; border-radius: 12px; border: 1px solid rgba(45,212,168,0.2); background: rgba(45,212,168,0.03); }
+    .verdict h2 { color: #2dd4a8; font-size: 18px; margin-bottom: 12px; }
+    .verdict p { color: #a0a5b0; font-size: 14px; line-height: 1.7; }
+    .verdict ul { margin: 12px 0; padding-left: 20px; }
+    .verdict li { color: #a0a5b0; font-size: 14px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="comparison">
+    <h1>MindCanvas UI 升级 — 三套方案对比</h1>
+    <p class="subtitle">左侧为推荐方案，滚动查看三个方案的视觉效果。底部有当前状态作为参照。</p>
+
+    <div class="grid">
+      <!-- ====== SCHEME 1: Precision Teal ====== -->
+      <div class="scheme scheme-1">
+        <div class="scheme-header">
+          <h2>方案 A：Precision Teal（推荐）</h2>
+          <p>Linear 精密暗色 + VoltAgent 信号色</p>
+          <div class="color-palette">
+            <div><div class="color-swatch" style="background:#06070a"></div><div class="swatch-label">BG</div></div>
+            <div><div class="color-swatch" style="background:#0c0d10"></div><div class="swatch-label">Raised</div></div>
+            <div><div class="color-swatch" style="background:#14151a"></div><div class="swatch-label">Surface</div></div>
+            <div><div class="color-swatch" style="background:#2dd4a8"></div><div class="swatch-label">Brand</div></div>
+            <div><div class="color-swatch" style="background:#818cf8"></div><div class="swatch-label">Accent</div></div>
+            <div><div class="color-swatch" style="background:#f0f0f3"></div><div class="swatch-label">Text</div></div>
+          </div>
+        </div>
+
+        <!-- Card Component -->
+        <div class="component-label">项目卡片</div>
+        <div class="preview-card">
+          <h3><span class="glow-dot"></span>My Project</h3>
+          <p class="meta">2026/04/22 14:30</p>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-enabled">运行中</span>
+            <span class="badge badge-disabled">已停用</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Input + Button -->
+        <div class="component-label">输入 + 按钮</div>
+        <div class="preview-card" style="padding:16px">
+          <div class="preview-input">输入项目名称...</div>
+          <button class="btn-primary">新建项目</button>
+          <button class="btn-secondary">取消</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Chat Bubbles -->
+        <div class="component-label">聊天节点</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="margin-bottom:4px;font-size:11px;color:#6b7080">GPT-4 · 节点 A</div>
+          <div class="bubble-user">这段提示词的效果如何？</div><br>
+          <div class="bubble-assistant">效果不错，逻辑清晰，输出稳定。</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Edge -->
+        <div class="component-label">节点连线</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="font-size:11px;color:#6b7080;margin-bottom:8px">节点 A → 节点 B</div>
+          <div class="edge"></div>
+          <div style="font-size:11px;color:#6b7080;margin-top:8px">默认 violet · 选中 teal</div>
+        </div>
+      </div>
+
+      <!-- ====== SCHEME 2: Sentry Purple ====== -->
+      <div class="scheme scheme-2">
+        <div class="scheme-header">
+          <h2>方案 B：Sentry Purple</h2>
+          <p>错误监控风格 · 紫黑底 + 石灰绿 accent</p>
+          <div class="color-palette">
+            <div><div class="color-swatch" style="background:#1f1633"></div><div class="swatch-label">BG</div></div>
+            <div><div class="color-swatch" style="background:#150f23"></div><div class="swatch-label">Surface</div></div>
+            <div><div class="color-swatch" style="background:#6a5fc1"></div><div class="swatch-label">Purple</div></div>
+            <div><div class="color-swatch" style="background:#c2ef4e"></div><div class="swatch-label">Lime</div></div>
+            <div><div class="color-swatch" style="background:#ffb287"></div><div class="swatch-label">Coral</div></div>
+            <div><div class="color-swatch" style="background:#f0e8ff"></div><div class="swatch-label">Text</div></div>
+          </div>
+        </div>
+
+        <div class="component-label">项目卡片</div>
+        <div class="preview-card">
+          <h3><span class="glow-dot"></span>My Project</h3>
+          <p class="meta">2026/04/22 14:30</p>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-enabled">运行中</span>
+            <span class="badge badge-disabled">已停用</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">输入 + 按钮</div>
+        <div class="preview-card" style="padding:16px">
+          <div class="preview-input">输入项目名称...</div>
+          <button class="btn-primary">新建项目</button>
+          <button class="btn-secondary">取消</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">聊天节点</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="margin-bottom:4px;font-size:11px;color:#8a7fb5">GPT-4 · 节点 A</div>
+          <div class="bubble-user">这段提示词的效果如何？</div><br>
+          <div class="bubble-assistant">效果不错，逻辑清晰，输出稳定。</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">节点连线</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="font-size:11px;color:#8a7fb5;margin-bottom:8px">节点 A → 节点 B</div>
+          <div class="edge"></div>
+          <div style="font-size:11px;color:#8a7fb5;margin-top:8px">默认 purple · 选中 lime</div>
+        </div>
+      </div>
+
+      <!-- ====== SCHEME 3: Raycast Obsidian ====== -->
+      <div class="scheme scheme-3">
+        <div class="scheme-header">
+          <h2>方案 C：Raycast Obsidian</h2>
+          <p>macOS 工具感 · 蓝黑底 + 红色 hero + 天蓝 accent</p>
+          <div class="color-palette">
+            <div><div class="color-swatch" style="background:#07080a"></div><div class="swatch-label">BG</div></div>
+            <div><div class="color-swatch" style="background:#101111"></div><div class="swatch-label">Surface</div></div>
+            <div><div class="color-swatch" style="background:#1b1c1e"></div><div class="swatch-label">Card</div></div>
+            <div><div class="color-swatch" style="background:#FF6363"></div><div class="swatch-label">Red</div></div>
+            <div><div class="color-swatch" style="background:#55b3ff"></div><div class="swatch-label">Blue</div></div>
+            <div><div class="color-swatch" style="background:#f9f9f9"></div><div class="swatch-label">Text</div></div>
+          </div>
+        </div>
+
+        <div class="component-label">项目卡片</div>
+        <div class="preview-card">
+          <h3><span class="glow-dot"></span>My Project</h3>
+          <p class="meta">2026/04/22 14:30</p>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-enabled">运行中</span>
+            <span class="badge badge-disabled">已停用</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">输入 + 按钮</div>
+        <div class="preview-card" style="padding:16px">
+          <div class="preview-input">输入项目名称...</div>
+          <button class="btn-primary">新建项目</button>
+          <button class="btn-secondary">取消</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">聊天节点</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="margin-bottom:4px;font-size:11px;color:#6a6b6c">GPT-4 · 节点 A</div>
+          <div class="bubble-user">这段提示词的效果如何？</div><br>
+          <div class="bubble-assistant">效果不错，逻辑清晰，输出稳定。</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="component-label">节点连线</div>
+        <div class="preview-card" style="padding:16px">
+          <div style="font-size:11px;color:#6a6b6c;margin-bottom:8px">节点 A → 节点 B</div>
+          <div class="edge"></div>
+          <div style="font-size:11px;color:#6a6b6c;margin-top:8px">默认 blue · 选中 red</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CURRENT STATE ====== -->
+    <div class="current">
+      <h2>当前状态（参照）</h2>
+      <div class="component-label">项目卡片</div>
+      <div class="current-card">
+        <h3>My Project</h3>
+        <p class="meta">2026/04/22 14:30</p>
+      </div>
+      <div class="divider" style="background:#374151"></div>
+      <div class="component-label">输入 + 按钮</div>
+      <div class="current-card" style="padding:16px">
+        <div class="current-input">输入项目名称...</div>
+        <div class="current-btn">新建项目</div>
+      </div>
+      <div class="divider" style="background:#374151"></div>
+      <div class="component-label">聊天节点</div>
+      <div class="current-card" style="padding:16px">
+        <div class="current-bubble-user">这段提示词的效果如何？</div><br>
+        <div class="current-bubble-assistant">效果不错，逻辑清晰，输出稳定。</div>
+      </div>
+    </div>
+
+    <!-- ====== VERDICT ====== -->
+    <div class="verdict">
+      <h2>方案对比总结</h2>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+            <th style="text-align:left;padding:8px;color:#888">维度</th>
+            <th style="text-align:left;padding:8px;color:#2dd4a8">A: Precision Teal</th>
+            <th style="text-align:left;padding:8px;color:#c2ef4e">B: Sentry Purple</th>
+            <th style="text-align:left;padding:8px;color:#55b3ff">C: Raycast Obsidian</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:8px;color:#888">视觉识别度</td>
+            <td style="padding:8px;color:#f0f0f3">高 — teal 在开发者工具中少见</td>
+            <td style="padding:8px;color:#f0f0f3">极高 — 紫黑+石灰非常独特</td>
+            <td style="padding:8px;color:#f0f0f3">中高 — 蓝黑底常见但红色 hero 突出</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:8px;color:#888">适合产品</td>
+            <td style="padding:8px;color:#f0f0f3">AI 调试 / 数据流 / 精密工具</td>
+            <td style="padding:8px;color:#f0f0f3">错误监控 / 告警系统 / IDE</td>
+            <td style="padding:8px;color:#f0f0f3">效率工具 / 启动器 / macOS 应用</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:8px;color:#888">深度技术</td>
+            <td style="padding:8px;color:#f0f0f3">半透明边框 + 亮度层级 + 发光</td>
+            <td style="padding:8px;color:#f0f0f3">毛玻璃 + 环境光阴影 + 内嵌高光</td>
+            <td style="padding:8px;color:#f0f0f3">多层阴影 + 内嵌高光 + macOS 深度</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:8px;color:#888">风险</td>
+            <td style="padding:8px;color:#f0f0f3">低 — 技术成熟，对比度优秀</td>
+            <td style="padding:8px;color:#f0f0f3">中 — 紫色底可能过于戏剧化</td>
+            <td style="padding:8px;color:#f0f0f3">低 — 红色 hero 需要谨慎使用</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;color:#888">推荐指数</td>
+            <td style="padding:8px;color:#2dd4a8;font-weight:600">★★★★★</td>
+            <td style="padding:8px;color:#c2ef4e;font-weight:600">★★★★☆</td>
+            <td style="padding:8px;color:#55b3ff;font-weight:600">★★★★☆</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
