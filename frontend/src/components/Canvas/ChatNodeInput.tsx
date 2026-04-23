@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Send, Square } from 'lucide-react'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 
 export default function ChatNodeInput({ onSend, disabled, streaming, onStop }: Props) {
   const textRef = useRef<HTMLTextAreaElement>(null)
+  const [hasText, setHasText] = useState(false)
 
   const handleSend = useCallback(() => {
     const el = textRef.current
@@ -19,6 +20,7 @@ export default function ChatNodeInput({ onSend, disabled, streaming, onStop }: P
     onSend(value)
     el.value = ''
     el.style.height = 'auto'
+    setHasText(false)
   }, [onSend, disabled])
 
   const handleInput = useCallback(() => {
@@ -26,6 +28,7 @@ export default function ChatNodeInput({ onSend, disabled, streaming, onStop }: P
     if (!el) return
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 150) + 'px'
+    setHasText(!!el.value.trim())
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -43,7 +46,7 @@ export default function ChatNodeInput({ onSend, disabled, streaming, onStop }: P
         onKeyDown={handleKeyDown}
         placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
         rows={1}
-        className="flex-1 bg-bg-surface text-text-primary text-sm rounded px-3 py-2 resize-none outline-none border border-border inset-input max-h-[150px]"
+        className="flex-1 bg-bg-input text-text-primary text-sm rounded px-3 py-2 resize-none outline-none border border-border inset-input max-h-[150px]"
         disabled={disabled}
       />
       {streaming ? (
@@ -58,7 +61,7 @@ export default function ChatNodeInput({ onSend, disabled, streaming, onStop }: P
       ) : (
         <button
           onClick={handleSend}
-          disabled={disabled || !textRef.current?.value?.trim()}
+          disabled={disabled || !hasText}
           className="self-end p-2.5 bg-brand hover:bg-brand-hover disabled:bg-bg-surface disabled:text-text-muted text-text-inverse rounded transition-ui"
           aria-label="发送消息"
         >

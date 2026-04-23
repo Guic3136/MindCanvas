@@ -2,11 +2,11 @@
 
 @theme {
   /* === Backgrounds (Sentry purple-black canvas) === */
-  --color-bg: #1f1633;
-  --color-bg-raised: #1a1030;
-  --color-bg-surface: #150f23;
-  --color-bg-elevated: #2a1f4a;
-  --color-bg-input: #150f23;
+  --color-bg: #0f0a1c;
+  --color-bg-raised: #2d224d;
+  --color-bg-surface: #1c1435;
+  --color-bg-elevated: #352a5a;
+  --color-bg-input: #140d24;
 
   /* === Accent: Lime-green signal (Sentry-style) === */
   --color-brand: #c2ef4e;
@@ -29,8 +29,8 @@
   --color-danger-muted: rgba(250, 127, 170, 0.12);
 
   /* === Borders (purple-tinted, semi-transparent) === */
-  --color-border: rgba(106, 95, 193, 0.15);
-  --color-border-strong: rgba(106, 95, 193, 0.25);
+  --color-border: rgba(106, 95, 193, 0.22);
+  --color-border-strong: rgba(106, 95, 193, 0.35);
   --color-border-hover: rgba(255, 255, 255, 0.1);
   --color-border-focus: rgba(194, 239, 78, 0.4);
 
@@ -168,6 +168,35 @@ body {
 .react-flow__renderer,
 .react-flow__pane {
   background-color: var(--color-bg) !important;
+}
+
+/* Global cursor: interactive elements (override Tailwind preflight) */
+button:not(:disabled), a[href], select, input[type="checkbox"], input[type="radio"] {
+  cursor: pointer !important;
+}
+:disabled, [aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
+/* NodeResizer: theme-colored handles with hover feedback */
+.react-flow__resize-control.handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--color-brand);
+  border: 1px solid var(--color-bg);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.react-flow__resize-control.handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 8px var(--color-brand-glow);
+}
+.react-flow__resize-control.line {
+  border-color: var(--color-brand);
+  opacity: 0.5;
+}
+.react-flow__resize-control.line:hover {
+  opacity: 0.8;
 }
 
 /* Markdown content in chat messages */

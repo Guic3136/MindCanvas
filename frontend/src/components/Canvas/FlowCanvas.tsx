@@ -7,7 +7,6 @@ import {
   type Node, type Edge, type Connection,
   ReactFlowProvider,
 } from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MousePointer2, GitBranchPlus, Send, X, HelpCircle } from 'lucide-react'
@@ -54,6 +53,8 @@ function FlowCanvasInner() {
       id: String(n.id),
       type: 'chat',
       position: { x: n.position_x, y: n.position_y },
+      width: n.width,
+      height: n.height,
       data: { label: n.label, model_id: n.model_id, db_node_id: n.id, project_id: projectId },
     }))
   }, [project, projectId])
@@ -103,8 +104,15 @@ function FlowCanvasInner() {
 
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
+    const exists = edges.some(
+      (e) => e.source === connection.source && e.target === connection.target
+    )
+    if (exists) {
+      toast.warning('连线已存在')
+      return
+    }
     addDbEdge(Number(connection.source), Number(connection.target))
-  }, [addDbEdge])
+  }, [addDbEdge, edges])
 
   const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
     updateNodePosition(Number(node.id), node.position)
@@ -236,7 +244,7 @@ function FlowCanvasInner() {
       >
         <Background color="rgba(106,95,193,0.15)" gap={20} />
         <Controls className="!bg-bg-raised !border-border [&>button]:!bg-bg-raised [&>button]:!border-border [&>button]:!text-text-primary [&>button:hover]:!bg-bg-hover" />
-        <MiniMap nodeColor="#c2ef4e" maskColor="rgba(31,22,51,0.85)" className="!bg-bg-raised !border-border" />
+        <MiniMap nodeColor="#c2ef4e" maskColor="rgba(15,10,28,0.85)" className="!bg-bg-raised !border-border" />
         <svg>
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">

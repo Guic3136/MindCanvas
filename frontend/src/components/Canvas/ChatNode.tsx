@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { NodeProps } from '@xyflow/react'
+import { NodeResizer } from '@xyflow/react'
 import { ChevronDown, Check } from 'lucide-react'
 import ChatNodeHeader from './ChatNodeHeader'
 import ChatNodeMessages from './ChatNodeMessages'
@@ -16,9 +17,9 @@ interface ChatNodeData {
   project_id: number
 }
 
-export default function ChatNode({ data, selected }: NodeProps) {
+export default function ChatNode({ data, selected, width, height }: NodeProps) {
   const { label, model_id, db_node_id, project_id } = data as unknown as ChatNodeData
-  const { models, updateNodeLabel, updateNodeModel, removeNode } = useCanvasStore()
+  const { models, updateNodeLabel, updateNodeModel, updateNodeSize, removeNode } = useCanvasStore()
   const { messages, streaming, loading, errors, loadMessages, sendMessage, cancelStream } = useChatStore()
 
   const nodeMessages = messages[db_node_id] || []
@@ -32,10 +33,19 @@ export default function ChatNode({ data, selected }: NodeProps) {
   }, [db_node_id, project_id, loadMessages])
 
   return (
-    <div
-      className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
-      style={{ width: 'min(400px, 90vw)', minHeight: 400, maxHeight: 700 }}
-    >
+    <>
+      <NodeResizer
+        minWidth={280}
+        minHeight={250}
+        isVisible={selected}
+        onResizeEnd={(_event, params) => {
+          updateNodeSize(db_node_id, { width: params.width, height: params.height })
+        }}
+      />
+      <div
+        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        style={{ width: width || 400, height: height || 500, minHeight: 250 }}
+      >
       <ChatNodeHeader
         label={label}
         onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}
@@ -66,6 +76,7 @@ export default function ChatNode({ data, selected }: NodeProps) {
         onStop={() => cancelStream(db_node_id)}
       />
     </div>
+    </>
   )
 }
 

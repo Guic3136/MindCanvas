@@ -15,6 +15,7 @@ interface CanvasState {
   loadModels: () => Promise<void>
   addNode: (modelId: number, position: { x: number; y: number }) => Promise<void>
   updateNodePosition: (nodeId: number, position: { x: number; y: number }) => void
+  updateNodeSize: (nodeId: number, size: { width: number; height: number }) => void
   updateNodeLabel: (nodeId: number, label: string) => Promise<void>
   updateNodeModel: (nodeId: number, modelId: number) => Promise<void>
   removeNode: (nodeId: number) => Promise<void>
@@ -83,6 +84,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             ...s.project,
             nodes: s.project.nodes.map((n) =>
               n.id === nodeId ? { ...n, position_x: position.x, position_y: position.y } : n
+            ),
+          }
+        : null,
+    }))
+  },
+
+  updateNodeSize: (nodeId, size) => {
+    const { project } = get()
+    if (!project) return
+    chatApi.updateNode(project.id, nodeId, { width: size.width, height: size.height }).catch((err) => {
+      console.error('[canvasStore] updateNodeSize failed:', err)
+    })
+    set((s) => ({
+      project: s.project
+        ? {
+            ...s.project,
+            nodes: s.project.nodes.map((n) =>
+              n.id === nodeId ? { ...n, width: size.width, height: size.height } : n
             ),
           }
         : null,
@@ -160,7 +179,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       set((s) => ({
         project: s.project ? { ...s.project, edges: [...s.project.edges, edge] } : null,
       }))
-    } catch (err) {
+    } catch (err: unknown) {
+      // 409 = edge already exists, silently ignore (frontend guard may have raced)
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) return
       const message = err instanceof Error ? err.message : 'Failed to add edge'
       set({ error: { message } })
       console.error('[canvasStore] addEdge failed:', err)

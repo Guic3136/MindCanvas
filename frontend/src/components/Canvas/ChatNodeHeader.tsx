@@ -20,7 +20,7 @@ export default function ChatNodeHeader({ label, onLabelChange, onDelete }: Props
   }
 
   return (
-    <div className="flex items-center gap-2 p-3 border-b border-border bg-bg-surface/60 inset-highlight">
+    <div className="flex items-center gap-2 p-3 border-b border-border bg-bg-input">
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-brand !border-2 !border-bg-raised" />
       {editing ? (
         <div className="flex items-center gap-1 flex-1">
