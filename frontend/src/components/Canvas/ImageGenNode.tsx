@@ -77,6 +77,7 @@ export default function ImageGenNode({ data, selected, width, height }: NodeProp
           <button
             onClick={handleGenerate}
             disabled={generating}
+            aria-label="生成图片"
             className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-text-inverse text-sm rounded transition-ui disabled:opacity-50"
           >
             {generating ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
