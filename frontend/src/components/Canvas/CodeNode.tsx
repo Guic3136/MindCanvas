@@ -83,6 +83,7 @@ export default function CodeNode({ data, selected, width, height }: NodeProps) {
           <button
             onClick={handleRun}
             disabled={running}
+            aria-label="运行代码"
             className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-text-inverse text-sm rounded transition-ui disabled:opacity-50"
           >
             {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
