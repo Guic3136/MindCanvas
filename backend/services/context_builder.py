@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.db import Node, Edge, Message
+from services.file_parser import get_file_text
 
 
 async def build_context_messages(target_node_id: int, db: AsyncSession) -> list:
@@ -21,6 +22,32 @@ async def build_context_messages(target_node_id: int, db: AsyncSession) -> list:
         if not source_node:
             continue
 
+        # === file type: extract file text as context ===
+        if source_node.node_type == "file" and source_node.file_url:
+            file_text = get_file_text(source_node.file_url, source_node.file_type)
+            context_messages.append({
+                "role": "user",
+                "content": f'[来自文件节点"{source_node.label}"的内容]\n文件名: {source_node.file_name or "未命名"}\n\n{file_text}',
+            })
+            continue
+
+        # === note type: use note_content as context ===
+        if source_node.node_type == "note" and source_node.note_content:
+            context_messages.append({
+                "role": "user",
+                "content": f'[来自便签节点"{source_node.label}"的内容]\n\n{source_node.note_content}',
+            })
+            continue
+
+        # === web type: use web_content as context ===
+        if source_node.node_type == "web" and source_node.web_content:
+            context_messages.append({
+                "role": "user",
+                "content": f'[来自网页节点"{source_node.label}"的抓取内容]\nURL: {source_node.web_url or ""}\n\n{source_node.web_content}',
+            })
+            continue
+
+        # === chat type: use messages as context (default behavior) ===
         if edge.context_mode == "full_history":
             msg_result = await db.execute(
                 select(Message).where(Message.node_id == edge.source_node_id).order_by(Message.created_at)

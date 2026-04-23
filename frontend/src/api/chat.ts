@@ -3,7 +3,27 @@ import type { NodeInfo, EdgeInfo, Message } from '../types'
 
 export async function createNode(
   projectId: number,
-  data: { model_id: number; label?: string; position_x?: number; position_y?: number }
+  data: {
+    model_id: number
+    node_type?: string
+    label?: string
+    position_x?: number
+    position_y?: number
+    file_url?: string
+    file_name?: string
+    file_type?: string
+    web_url?: string
+    web_content?: string
+    note_content?: string
+    transform_prompt?: string
+    transform_output?: string
+    compare_model_ids?: string
+    code_language?: string
+    code_script?: string
+    code_output?: string
+    image_gen_prompt?: string
+    image_gen_url?: string
+  }
 ): Promise<NodeInfo> {
   const { data: result } = await client.post<NodeInfo>(`/projects/${projectId}/nodes`, data)
   return result

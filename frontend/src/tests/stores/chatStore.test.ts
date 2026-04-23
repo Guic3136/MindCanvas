@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useChatStore } from '../../stores/chatStore'
 
-const chatStreamMock = vi.fn(() => ({ cancel: vi.fn() }))
+const chatStreamMock = vi.fn((..._args: any[]) => ({ cancel: vi.fn() }))
 
 vi.mock('../../api/chat', () => ({
   getMessages: vi.fn(),
-  chatStream: (...args: unknown[]) => chatStreamMock(...args),
+  chatStream: (...args: any[]) => chatStreamMock(...args),
 }))
 
 beforeEach(() => {
@@ -35,7 +35,7 @@ describe('chatStore', () => {
 
   it('setStreaming sets streaming state', () => {
     chatStreamMock.mockImplementation(
-      (_pid: number, _nid: number, _msg: string, onToken: (t: string) => void) => {
+      (_pid: any, _nid: any, _msg: any, onToken: any) => {
         onToken('chunk')
         return { cancel: vi.fn() }
       }

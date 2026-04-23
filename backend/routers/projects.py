@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -7,6 +9,8 @@ from models.db import Project, User
 from schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectListItem, NodeBrief, EdgeBrief, PaginatedResponse
 from routers.auth import get_current_user
 from core.auth import verify_project_ownership
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -68,3 +72,51 @@ async def delete_project(pid: int, db: AsyncSession = Depends(get_db), current_u
     await db.delete(project)
     await db.commit()
     return {"ok": True}
+
+
+ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "gif", "webp", "xlsx", "xls", "csv"}
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+@router.post("/{pid}/upload")
+async def upload_file(
+    pid: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await verify_project_ownership(pid, current_user, db)
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+
+    ext = file.filename.split(".")[-1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的文件类型: {ext}")
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="文件大小超过 20MB 限制")
+
+    project_upload_dir = os.path.join(UPLOAD_DIR, str(pid))
+    os.makedirs(project_upload_dir, exist_ok=True)
+
+    safe_name = f"{uuid.uuid4().hex}_{file.filename}"
+    file_path = os.path.join(project_upload_dir, safe_name)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    # Map extension to file_type
+    file_type_map = {
+        "pdf": "pdf",
+        "png": "image", "jpg": "image", "jpeg": "image", "gif": "image", "webp": "image",
+        "xlsx": "excel", "xls": "excel", "csv": "excel",
+    }
+
+    return {
+        "url": f"/uploads/{pid}/{safe_name}",
+        "name": file.filename,
+        "type": file_type_map.get(ext, "unknown"),
+        "size": len(content),
+    }

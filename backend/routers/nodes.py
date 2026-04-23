@@ -16,6 +16,9 @@ from routers.auth import get_current_user
 from core.auth import verify_project_ownership
 from services.llm_client import stream_chat
 from services.context_builder import build_context_messages
+from services.file_parser import get_file_text
+from services.web_fetcher import fetch_webpage_text
+from services.code_runner import run_code
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["nodes"])
 
@@ -25,7 +28,18 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["nodes"])
 @router.post("/nodes", response_model=NodeResponse)
 async def create_node(project_id: int, req: NodeCreate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     await verify_project_ownership(project_id, user, db)
-    node = Node(project_id=project_id, model_id=req.model_id, label=req.label, position_x=req.position_x, position_y=req.position_y)
+    node = Node(project_id=project_id, model_id=req.model_id, node_type=req.node_type, label=req.label, position_x=req.position_x, position_y=req.position_y)
+    # Set type-specific fields
+    for field in [
+        'file_url', 'file_name', 'file_type',
+        'web_url', 'web_content', 'note_content',
+        'transform_prompt', 'transform_output', 'compare_model_ids',
+        'code_language', 'code_script', 'code_output',
+        'image_gen_prompt', 'image_gen_url',
+    ]:
+        value = getattr(req, field, None)
+        if value is not None:
+            setattr(node, field, value)
     db.add(node)
     await db.commit()
     await db.refresh(node)
@@ -167,6 +181,12 @@ async def chat(project_id: int, nid: int, body: dict, db: AsyncSession = Depends
     # Assemble messages: context + node history
     messages = context + [{"role": m.role, "content": m.content} for m in history]
 
+    # For file nodes, prepend file content as system context
+    if node.node_type == "file" and node.file_url:
+        file_text = get_file_text(node.file_url, node.file_type)
+        file_prompt = f"以下是用户上传的文件内容，请基于这些内容回答问题。\n\n文件名: {node.file_name or '未命名'}\n\n{file_text}"
+        messages.insert(0, {"role": "system", "content": file_prompt})
+
     # Provider config
     provider = node.model.provider
     model_id = node.model.model_id
@@ -190,3 +210,158 @@ async def chat(project_id: int, nid: int, body: dict, db: AsyncSession = Depends
             yield f"data: {json.dumps({'type': 'done', 'message_id': msg_assistant.id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/nodes/{nid}/fetch-web")
+async def fetch_web(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user, db)
+    node = await db.get(Node, nid)
+    if not node or node.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    url = body.get("url", "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL cannot be empty")
+
+    text = await fetch_webpage_text(url)
+    node.web_url = url
+    node.web_content = text
+    await db.commit()
+    await db.refresh(node)
+    return {"url": url, "content_preview": text[:500]}
+
+
+@router.post("/nodes/{nid}/transform")
+async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user, db)
+    node = await db.get(Node, nid)
+    if not node or node.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    prompt = body.get("prompt", "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+    # Build context from upstream nodes
+    context = await build_context_messages(nid, db)
+    input_text = ""
+    if context:
+        input_text = "\n\n".join(c.get("content", "") for c in context)
+
+    system_msg = f"你是一个文本处理助手。请根据以下指令处理输入文本：\n\n指令：{prompt}\n\n只输出处理后的结果，不要添加解释。"
+    if input_text:
+        system_msg += f"\n\n输入文本：\n{input_text}"
+
+    messages = [{"role": "system", "content": system_msg}]
+    if input_text:
+        messages.append({"role": "user", "content": input_text})
+    else:
+        messages.append({"role": "user", "content": "请执行上述指令。"})
+
+    provider = node.model.provider
+    model_id = node.model.model_id
+    base_url = provider.base_url
+    api_key = provider.api_key
+
+    result_tokens = []
+    async for token in stream_chat(base_url, api_key, model_id, messages):
+        result_tokens.append(token)
+
+    output = "".join(result_tokens)
+    node.transform_prompt = prompt
+    node.transform_output = output
+    await db.commit()
+    await db.refresh(node)
+    return {"output": output}
+
+
+import asyncio
+
+
+@router.post("/nodes/{nid}/compare")
+async def compare_models(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user, db)
+    node = await db.get(Node, nid)
+    if not node or node.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    model_ids = body.get("model_ids", [])
+    if len(model_ids) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 models required")
+
+    # Build context from upstream nodes
+    context = await build_context_messages(nid, db)
+    input_text = ""
+    if context:
+        input_text = "\n\n".join(c.get("content", "") for c in context)
+
+    if not input_text:
+        raise HTTPException(status_code=400, detail="No input from upstream nodes")
+
+    messages = [{"role": "user", "content": input_text}]
+
+    # Fetch models
+    model_results = {}
+    from sqlalchemy import select as sa_select
+    from models.db import Model as ModelDB
+
+    for mid in model_ids:
+        m_result = await db.execute(sa_select(ModelDB).where(ModelDB.id == mid).options(selectinload(ModelDB.provider)))
+        model = m_result.scalar_one_or_none()
+        if not model:
+            continue
+
+        provider = model.provider
+        try:
+            tokens = []
+            async for token in stream_chat(provider.base_url, provider.api_key, model.model_id, messages):
+                tokens.append(token)
+            model_results[mid] = "".join(tokens)
+        except Exception as e:
+            model_results[mid] = f"[错误: {e}]"
+
+    import json
+    node.compare_model_ids = json.dumps(model_ids)
+    await db.commit()
+    return {"results": model_results}
+
+
+@router.post("/nodes/{nid}/run-code")
+async def run_code_endpoint(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user, db)
+    node = await db.get(Node, nid)
+    if not node or node.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    language = body.get("language", "python")
+    script = body.get("script", "").strip()
+    if not script:
+        raise HTTPException(status_code=400, detail="Script cannot be empty")
+
+    output = await run_code(language, script)
+    node.code_language = language
+    node.code_script = script
+    node.code_output = output
+    await db.commit()
+    return {"output": output}
+
+
+@router.post("/nodes/{nid}/generate-image")
+async def generate_image(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user, db)
+    node = await db.get(Node, nid)
+    if not node or node.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    prompt = body.get("prompt", "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+    # For now, return a placeholder since image generation requires external API setup
+    # In production, this would call DALL-E / Midjourney / Stable Diffusion API
+    placeholder_url = "https://placehold.co/512x512/2d224d/c2ef4e?text=Image+Generation+Placeholder"
+
+    node.image_gen_prompt = prompt
+    node.image_gen_url = placeholder_url
+    await db.commit()
+    return {"url": placeholder_url, "prompt": prompt}

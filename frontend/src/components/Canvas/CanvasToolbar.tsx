@@ -1,8 +1,7 @@
-import { Plus, Download, ZoomIn, ZoomOut, Maximize, Minus, Plus as PlusIcon } from 'lucide-react'
+import { Download, ZoomIn, ZoomOut, Maximize } from 'lucide-react'
 
 interface Props {
   projectName: string
-  onAddNode: () => void
   onExport: () => void
   onProjectNameChange: (name: string) => void
   zoom: number
@@ -15,7 +14,7 @@ interface Props {
 }
 
 export default function CanvasToolbar({
-  projectName, onAddNode, onExport, onProjectNameChange,
+  projectName, onExport, onProjectNameChange,
   zoom, onZoomIn, onZoomOut, onFitView, onFullscreen,
   nodeCount, edgeCount,
 }: Props) {
@@ -56,9 +55,6 @@ export default function CanvasToolbar({
         </div>
         <button onClick={onFullscreen} className="p-1.5 text-text-muted hover:text-text-primary transition-ui hidden sm:block" title="全屏" aria-label="全屏">
           <Maximize size={14} />
-        </button>
-        <button onClick={onAddNode} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-brand hover:bg-brand-hover text-text-inverse text-sm rounded transition-ui" aria-label="新建节点">
-          <Plus size={16} /> <span className="hidden sm:inline">新建节点</span>
         </button>
         <button onClick={onExport} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-bg-surface hover:bg-bg-hover text-text-primary text-sm rounded border border-border transition-ui" aria-label="导出为 Markdown">
           <Download size={16} /> <span className="hidden sm:inline">导出</span>

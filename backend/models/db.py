@@ -66,14 +66,44 @@ class Project(Base):
 class Node(Base):
     __tablename__ = "nodes"
 
+    # === 通用字段 ===
     id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     model_id = Column(Integer, ForeignKey("models.id"), nullable=False, index=True)
+    node_type = Column(String(30), nullable=False, default="chat")
     label = Column(String(300), nullable=False, default="新节点")
     position_x = Column(Float, default=0)
     position_y = Column(Float, default=0)
     width = Column(Float, default=400)
     height = Column(Float, default=500)
+
+    # === file 类型专属 ===
+    file_url = Column(String(500))
+    file_name = Column(String(200))
+    file_type = Column(String(50))
+
+    # === web 类型专属 ===
+    web_url = Column(String(1000))
+    web_content = Column(Text)
+
+    # === note 类型专属 ===
+    note_content = Column(Text)
+
+    # === transform 类型专属 ===
+    transform_prompt = Column(Text)
+    transform_output = Column(Text)
+
+    # === compare 类型专属 ===
+    compare_model_ids = Column(String(500))
+
+    # === code 类型专属 ===
+    code_language = Column(String(20))
+    code_script = Column(Text)
+    code_output = Column(Text)
+
+    # === image_gen 类型专属 ===
+    image_gen_prompt = Column(Text)
+    image_gen_url = Column(String(500))
 
     project = relationship("Project", back_populates="nodes")
     model = relationship("Model")

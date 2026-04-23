@@ -46,7 +46,7 @@ describe('canvasStore', () => {
     vi.mocked(projectApi.getProject).mockResolvedValue(mockProject)
     await useCanvasStore.getState().loadProject(1)
 
-    const newNode = { id: 1, model_id: 1, label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }
+    const newNode = { id: 1, model_id: 1, node_type: 'chat', label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }
     vi.mocked(chatApi.createNode).mockResolvedValue(newNode)
 
     await useCanvasStore.getState().addNode(1, { x: 0, y: 0 })
@@ -56,7 +56,7 @@ describe('canvasStore', () => {
   it('removeNode removes a node', async () => {
     const projectWithNode: Project = {
       ...mockProject,
-      nodes: [{ id: 1, model_id: 1, label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }],
+      nodes: [{ id: 1, model_id: 1, node_type: 'chat', label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }],
       edges: [],
     }
     vi.mocked(projectApi.getProject).mockResolvedValue(projectWithNode)
@@ -71,7 +71,7 @@ describe('canvasStore', () => {
   it('updateNodePosition updates position', async () => {
     const projectWithNode: Project = {
       ...mockProject,
-      nodes: [{ id: 1, model_id: 1, label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }],
+      nodes: [{ id: 1, model_id: 1, node_type: 'chat', label: 'Node 1', position_x: 0, position_y: 0, width: 400, height: 500 }],
       edges: [],
     }
     vi.mocked(projectApi.getProject).mockResolvedValue(projectWithNode)

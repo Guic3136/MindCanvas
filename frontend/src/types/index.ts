@@ -40,11 +40,33 @@ export interface ProjectListItem {
 export interface NodeInfo {
   id: number
   model_id: number
+  node_type: string
   label: string
   position_x: number
   position_y: number
   width: number
   height: number
+  // file
+  file_url?: string
+  file_name?: string
+  file_type?: string
+  // web
+  web_url?: string
+  web_content?: string
+  // note
+  note_content?: string
+  // transform
+  transform_prompt?: string
+  transform_output?: string
+  // compare
+  compare_model_ids?: string
+  // code
+  code_language?: string
+  code_script?: string
+  code_output?: string
+  // image_gen
+  image_gen_prompt?: string
+  image_gen_url?: string
 }
 
 export interface EdgeInfo {

@@ -10,14 +10,14 @@ import {
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MousePointer2, GitBranchPlus, Send, X, HelpCircle } from 'lucide-react'
-import ChatNode from './ChatNode'
 import CustomEdge from './CustomEdge'
 import CanvasToolbar from './CanvasToolbar'
+import NodeTypePanel from './NodeTypePanel'
+import { reactFlowNodeTypes } from './nodeRegistry'
 import { useCanvasStore } from '../../stores/canvasStore'
 import * as projectApi from '../../api/project'
 import client from '../../api/client'
 
-const nodeTypes = { chat: ChatNode }
 const edgeTypes = { custom: CustomEdge }
 
 function FlowCanvasInner() {
@@ -51,11 +51,31 @@ function FlowCanvasInner() {
     if (!project) return []
     return project.nodes.map((n) => ({
       id: String(n.id),
-      type: 'chat',
+      type: n.node_type || 'chat',
       position: { x: n.position_x, y: n.position_y },
       width: n.width,
       height: n.height,
-      data: { label: n.label, model_id: n.model_id, db_node_id: n.id, project_id: projectId },
+      data: {
+        label: n.label,
+        model_id: n.model_id,
+        db_node_id: n.id,
+        project_id: projectId,
+        node_type: n.node_type,
+        file_url: n.file_url,
+        file_name: n.file_name,
+        file_type: n.file_type,
+        web_url: n.web_url,
+        web_content: n.web_content,
+        note_content: n.note_content,
+        transform_prompt: n.transform_prompt,
+        transform_output: n.transform_output,
+        compare_model_ids: n.compare_model_ids,
+        code_language: n.code_language,
+        code_script: n.code_script,
+        code_output: n.code_output,
+        image_gen_prompt: n.image_gen_prompt,
+        image_gen_url: n.image_gen_url,
+      },
     }))
   }, [project, projectId])
 
@@ -86,7 +106,11 @@ function FlowCanvasInner() {
     const idsChanged = currentIds.size !== incomingIds.size || [...currentIds].some((id) => !incomingIds.has(id))
     const dataChanged = rfNodes.some((incoming) => {
       const current = nodes.find((n) => n.id === incoming.id)
-      return !current || current.data.model_id !== incoming.data.model_id || current.data.label !== incoming.data.label
+      if (!current) return true
+      const d1 = current.data as Record<string, unknown>
+      const d2 = incoming.data as Record<string, unknown>
+      const keys = ['label', 'model_id', 'node_type', 'file_url', 'file_name', 'file_type', 'web_url', 'web_content', 'note_content', 'transform_prompt', 'transform_output', 'compare_model_ids', 'code_language', 'code_script', 'code_output', 'image_gen_prompt', 'image_gen_url']
+      return keys.some((k) => d1[k] !== d2[k])
     })
     if (idsChanged || dataChanged) {
       setNodes(rfNodes)
@@ -160,13 +184,13 @@ function FlowCanvasInner() {
     }
   }, [])
 
-  const handleAddNode = useCallback(() => {
+  const handleAddNode = useCallback((nodeType: string) => {
     if (models.length === 0) {
       toast.error('请先在管理员页面添加模型')
       return
     }
     const pos = getSmartPosition()
-    addNode(models[0].id, pos)
+    addNode(models[0].id, pos, nodeType)
   }, [models, addNode, getSmartPosition])
 
   const handleExport = useCallback(async () => {
@@ -210,7 +234,6 @@ function FlowCanvasInner() {
       )}
       <CanvasToolbar
         projectName={projectName}
-        onAddNode={handleAddNode}
         onExport={handleExport}
         onProjectNameChange={handleNameChange}
         zoom={zoom}
@@ -221,6 +244,7 @@ function FlowCanvasInner() {
         nodeCount={nodes.length}
         edgeCount={edges.length}
       />
+      <NodeTypePanel onAddNode={handleAddNode} />
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -229,7 +253,7 @@ function FlowCanvasInner() {
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
         onViewportChange={(vp) => setZoom(vp.zoom)}
-        nodeTypes={nodeTypes}
+        nodeTypes={reactFlowNodeTypes}
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}

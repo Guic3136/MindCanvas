@@ -15,6 +15,7 @@ interface ChatNodeData {
   model_id: number
   db_node_id: number
   project_id: number
+  node_type: string
 }
 
 export default function ChatNode({ data, selected, width, height }: NodeProps) {

@@ -13,7 +13,7 @@ interface CanvasState {
 
   loadProject: (id: number) => Promise<void>
   loadModels: () => Promise<void>
-  addNode: (modelId: number, position: { x: number; y: number }) => Promise<void>
+  addNode: (modelId: number, position: { x: number; y: number }, nodeType?: string, extraData?: Partial<NodeInfo>) => Promise<void>
   updateNodePosition: (nodeId: number, position: { x: number; y: number }) => void
   updateNodeSize: (nodeId: number, size: { width: number; height: number }) => void
   updateNodeLabel: (nodeId: number, label: string) => Promise<void>
@@ -51,15 +51,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
   },
 
-  addNode: async (modelId, position) => {
+  addNode: async (modelId, position, nodeType = 'chat', extraData = {}) => {
     try {
       const { project } = get()
       if (!project) return
+      const labelMap: Record<string, string> = {
+        chat: '对话',
+        file: '文件',
+        note: '便签',
+        web: '网页',
+        transform: '转换',
+        compare: '对比',
+        code: '代码',
+        image_gen: '生图',
+      }
+      const typeCount = project.nodes?.filter((n) => n.node_type === nodeType).length || 0
       const node = await chatApi.createNode(project.id, {
         model_id: modelId,
-        label: `节点 ${(project.nodes?.length || 0) + 1}`,
+        node_type: nodeType,
+        label: `${labelMap[nodeType] || '节点'} ${typeCount + 1}`,
         position_x: position.x,
         position_y: position.y,
+        ...extraData,
       })
       set((s) => ({
         project: s.project ? { ...s.project, nodes: [...s.project.nodes, node] } : null,
