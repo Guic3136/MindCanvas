@@ -97,7 +97,12 @@ export function chatStream(
       }
     })
     .catch((err) => {
-      if (err.name !== 'AbortError') onError(err.message)
+      if (err.name !== 'AbortError') {
+        const msg = err.message === 'Failed to fetch'
+          ? '无法连接到服务器，请检查后端服务是否运行'
+          : err.message
+        onError(msg)
+      }
     })
 
   return { cancel: () => controller.abort() }

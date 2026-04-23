@@ -74,11 +74,16 @@ function FlowCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState(rfNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
 
-  // Sync node add/remove only (position changes are handled by onNodesChange + onNodeDragStop)
+  // Sync node add/remove and data changes (position changes are handled by onNodesChange + onNodeDragStop)
   useEffect(() => {
     const currentIds = new Set(nodes.map((n) => n.id))
     const incomingIds = new Set(rfNodes.map((n) => n.id))
-    if (currentIds.size !== incomingIds.size || [...currentIds].some((id) => !incomingIds.has(id))) {
+    const idsChanged = currentIds.size !== incomingIds.size || [...currentIds].some((id) => !incomingIds.has(id))
+    const dataChanged = rfNodes.some((incoming) => {
+      const current = nodes.find((n) => n.id === incoming.id)
+      return !current || current.data.model_id !== incoming.data.model_id || current.data.label !== incoming.data.label
+    })
+    if (idsChanged || dataChanged) {
       setNodes(rfNodes)
     }
   }, [rfNodes, setNodes])

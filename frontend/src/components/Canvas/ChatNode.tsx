@@ -76,12 +76,16 @@ interface ModelSelectorProps {
 function ModelSelector({ value, models, onChange }: ModelSelectorProps) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (triggerRef.current?.contains(target)) return
+      if (dropdownRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -109,6 +113,7 @@ function ModelSelector({ value, models, onChange }: ModelSelectorProps) {
       </button>
       {open && rect && createPortal(
         <div
+          ref={dropdownRef}
           className="bg-bg-elevated border border-border-strong rounded-lg shadow-popover overflow-hidden z-[9999]"
           style={{
             position: 'fixed',
