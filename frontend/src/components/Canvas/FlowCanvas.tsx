@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow, Background, Controls, MiniMap,
   useNodesState, useEdgesState,
-  useReactFlow, getNodesBounds,
+  useReactFlow,
   ConnectionMode,
   type Node, type Edge, type Connection,
   ReactFlowProvider,
@@ -24,7 +24,7 @@ function FlowCanvasInner() {
   const { id: projectIdStr } = useParams()
   const projectId = Number(projectIdStr)
   const { project, models, error, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
-  const { getViewport, fitView, getNodes } = useReactFlow()
+  const { getViewport, fitView, getNodes, getNodesBounds } = useReactFlow()
 
   const [projectName, setProjectName] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
