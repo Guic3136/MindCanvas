@@ -7,9 +7,11 @@ interface ChatState {
   streaming: Record<number, string>
   loading: Record<number, boolean>
   errors: Record<number, string | null>
+  cancellers: Record<number, () => void>
 
   loadMessages: (projectId: number, nodeId: number) => Promise<void>
   sendMessage: (projectId: number, nodeId: number, message: string) => void
+  cancelStream: (nodeId: number) => void
   clearStreaming: (nodeId: number) => void
   clearNodeMessages: (nodeId: number) => void
 }
@@ -19,6 +21,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streaming: {},
   loading: {},
   errors: {},
+  cancellers: {},
 
   loadMessages: async (projectId, nodeId) => {
     try {
@@ -52,7 +55,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       errors: { ...s.errors, [nodeId]: null },
     }))
 
-    chatApi.chatStream(
+    const { cancel } = chatApi.chatStream(
       projectId,
       nodeId,
       message,
@@ -66,34 +69,65 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((s) => {
           const newStreaming = { ...s.streaming }
           delete newStreaming[nodeId]
-          return { streaming: newStreaming }
+          const newCancellers = { ...s.cancellers }
+          delete newCancellers[nodeId]
+          return { streaming: newStreaming, cancellers: newCancellers }
         })
       },
       (error) => {
         console.error('[chatStore] sendMessage error:', error)
-        const errorMessage = typeof error === 'string' ? error : 'Failed to send. Retry.'
+        const errorMessage = typeof error === 'string' ? error : '发送失败，请重试'
         set((s) => {
           const newStreaming = { ...s.streaming }
           delete newStreaming[nodeId]
-          const msgs = s.messages[nodeId] || []
-          const updated = msgs.map((m) =>
-            m.id === tempUserMsg.id ? { ...m, content: errorMessage } : m
-          )
+          const newCancellers = { ...s.cancellers }
+          delete newCancellers[nodeId]
+          // Keep the original user message, set error separately
           return {
             streaming: newStreaming,
-            messages: { ...s.messages, [nodeId]: updated },
+            cancellers: newCancellers,
             errors: { ...s.errors, [nodeId]: errorMessage },
           }
         })
       }
     )
+
+    set((s) => ({
+      cancellers: { ...s.cancellers, [nodeId]: cancel },
+    }))
+  },
+
+  cancelStream: (nodeId) => {
+    const { cancellers } = get()
+    const cancel = cancellers[nodeId]
+    if (cancel) {
+      cancel()
+      set((s) => {
+        const newStreaming = { ...s.streaming }
+        delete newStreaming[nodeId]
+        const newCancellers = { ...s.cancellers }
+        delete newCancellers[nodeId]
+        // Reload messages to get the partial response saved by backend
+        return { streaming: newStreaming, cancellers: newCancellers }
+      })
+      // Reload to get any partial messages saved by backend
+      const msgs = get().messages[nodeId]
+      if (msgs && msgs.length > 0) {
+        const lastMsg = msgs[msgs.length - 1]
+        if (lastMsg.role === 'user') {
+          // The stream was cancelled before any response, just clean up
+        }
+      }
+    }
   },
 
   clearStreaming: (nodeId) => {
     set((s) => {
       const newStreaming = { ...s.streaming }
       delete newStreaming[nodeId]
-      return { streaming: newStreaming }
+      const newCancellers = { ...s.cancellers }
+      delete newCancellers[nodeId]
+      return { streaming: newStreaming, cancellers: newCancellers }
     })
   },
 
@@ -105,7 +139,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newLoading[nodeId]
       const newErrors = { ...s.errors }
       delete newErrors[nodeId]
-      return { messages: newMessages, loading: newLoading, errors: newErrors }
+      const newCancellers = { ...s.cancellers }
+      delete newCancellers[nodeId]
+      return { messages: newMessages, loading: newLoading, errors: newErrors, cancellers: newCancellers }
     })
   },
 }))

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { NodeProps } from '@xyflow/react'
 import { ChevronDown, Check } from 'lucide-react'
@@ -19,7 +19,7 @@ interface ChatNodeData {
 export default function ChatNode({ data, selected }: NodeProps) {
   const { label, model_id, db_node_id, project_id } = data as unknown as ChatNodeData
   const { models, updateNodeLabel, updateNodeModel, removeNode } = useCanvasStore()
-  const { messages, streaming, loading, errors, loadMessages, sendMessage } = useChatStore()
+  const { messages, streaming, loading, errors, loadMessages, sendMessage, cancelStream } = useChatStore()
 
   const nodeMessages = messages[db_node_id] || []
   const nodeStreaming = streaming[db_node_id] || ''
@@ -34,7 +34,7 @@ export default function ChatNode({ data, selected }: NodeProps) {
   return (
     <div
       className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
-      style={{ width: 'min(400px, 90vw)', height: 500 }}
+      style={{ width: 'min(400px, 90vw)', minHeight: 400, maxHeight: 700 }}
     >
       <ChatNodeHeader
         label={label}
@@ -62,6 +62,8 @@ export default function ChatNode({ data, selected }: NodeProps) {
       <ChatNodeInput
         onSend={(msg) => sendMessage(project_id, db_node_id, msg)}
         disabled={isStreaming}
+        streaming={isStreaming}
+        onStop={() => cancelStream(db_node_id)}
       />
     </div>
   )

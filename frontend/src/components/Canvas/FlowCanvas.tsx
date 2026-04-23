@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow, Background, Controls, MiniMap,
-  addEdge, useNodesState, useEdgesState,
+  useNodesState, useEdgesState,
+  useReactFlow, getNodesBounds,
+  ConnectionMode,
   type Node, type Edge, type Connection,
   ReactFlowProvider,
 } from '@xyflow/react'
@@ -23,9 +25,11 @@ function FlowCanvasInner() {
   const { id: projectIdStr } = useParams()
   const projectId = Number(projectIdStr)
   const { project, models, error, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
+  const { getViewport, fitView, getNodes } = useReactFlow()
 
   const [projectName, setProjectName] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [zoom, setZoom] = useState(1)
 
   // Show onboarding when project loads with no nodes
   useEffect(() => {
@@ -106,14 +110,56 @@ function FlowCanvasInner() {
     updateNodePosition(Number(node.id), node.position)
   }, [updateNodePosition])
 
+  // Smart node placement: find a position that doesn't overlap existing nodes
+  const getSmartPosition = useCallback(() => {
+    const currentNodes = getNodes()
+    if (currentNodes.length === 0) {
+      return { x: 100, y: 100 }
+    }
+    const bounds = getNodesBounds(currentNodes)
+    const NODE_W = 400
+    const NODE_H = 500
+    const GAP = 60
+    // Place to the right of the rightmost node
+    return { x: bounds.x + bounds.width + GAP, y: bounds.y }
+  }, [getNodes])
+
+  const handleZoomIn = useCallback(() => {
+    const v = getViewport()
+    const newZoom = Math.min(v.zoom * 1.2, 2)
+    setZoom(newZoom)
+  }, [getViewport])
+
+  const handleZoomOut = useCallback(() => {
+    const v = getViewport()
+    const newZoom = Math.max(v.zoom / 1.2, 0.3)
+    setZoom(newZoom)
+  }, [getViewport])
+
+  const handleFitView = useCallback(() => {
+    fitView({ padding: 0.2, duration: 300 })
+    setTimeout(() => {
+      const v = getViewport()
+      setZoom(v.zoom)
+    }, 350)
+  }, [fitView, getViewport])
+
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+    } else {
+      document.exitFullscreen()
+    }
+  }, [])
+
   const handleAddNode = useCallback(() => {
     if (models.length === 0) {
       toast.error('请先在管理员页面添加模型')
       return
     }
-    const center = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 300 }
-    addNode(models[0].id, center)
-  }, [models, addNode])
+    const pos = getSmartPosition()
+    addNode(models[0].id, pos)
+  }, [models, addNode, getSmartPosition])
 
   const handleExport = useCallback(async () => {
     const { data } = await client.post(`/projects/${projectId}/export`, {}, { responseType: 'blob' })
@@ -159,6 +205,13 @@ function FlowCanvasInner() {
         onAddNode={handleAddNode}
         onExport={handleExport}
         onProjectNameChange={handleNameChange}
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFitView={handleFitView}
+        onFullscreen={handleFullscreen}
+        nodeCount={nodes.length}
+        edgeCount={edges.length}
       />
       <ReactFlow
         nodes={nodes}
@@ -167,9 +220,17 @@ function FlowCanvasInner() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        onViewportChange={(vp) => setZoom(vp.zoom)}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.3}
+        maxZoom={2}
+        snapToGrid
+        snapGrid={[20, 20]}
+        connectionMode={ConnectionMode.Strict}
+        deleteKeyCode={['Backspace', 'Delete']}
         className="bg-bg"
         proOptions={{ hideAttribution: true }}
       >

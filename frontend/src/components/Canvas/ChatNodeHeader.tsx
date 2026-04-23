@@ -41,7 +41,7 @@ export default function ChatNodeHeader({ label, onLabelChange, onDelete }: Props
         </button>
       )}
       {onDelete && (
-        <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="text-text-muted hover:text-danger transition-ui" aria-label="删除节点">
+        <button onClick={(e) => { e.stopPropagation(); if (window.confirm('确定要删除此节点吗？所有消息将丢失。')) onDelete() }} className="text-text-muted hover:text-danger transition-ui" aria-label="删除节点">
           <Trash2 size={14} />
         </button>
       )}

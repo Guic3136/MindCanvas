@@ -54,7 +54,7 @@ export default function CustomEdge({
               </button>
               <hr className="border-border" />
               <button
-                onClick={() => { edgeData.onRemove(edgeData.db_edge_id); setShowMenu(false) }}
+                onClick={() => { if (window.confirm('确定要删除此连线吗？')) { edgeData.onRemove(edgeData.db_edge_id); setShowMenu(false) } }}
                 className="block w-full text-left text-xs px-2 py-1 rounded text-danger hover:bg-bg-hover transition-ui"
               >
                 <X size={14} className="inline mr-1" /> 删除连线
