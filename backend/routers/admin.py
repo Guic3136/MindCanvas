@@ -3,12 +3,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.security import hash_password, mask_secret
-from models.db import User, ModelProvider, Model
+from models.db import User, ModelProvider, Model, ImageGenConfig
 from schemas.admin import (
     ProviderCreate, ProviderUpdate, ProviderResponse,
     ModelCreate, ModelUpdate, ModelResponse,
     UserCreate, UserListResponse, PaginatedResponse,
 )
+from schemas.image_gen import ImageGenConfigResponse, ImageGenConfigUpdate
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -174,3 +175,57 @@ async def delete_user(uid: int, db: AsyncSession = Depends(get_db), _: User = De
     await db.delete(user)
     await db.commit()
     return {"ok": True}
+
+
+# --- ImageGen Config ---
+
+@router.get("/image-gen-config", response_model=ImageGenConfigResponse)
+async def get_image_gen_config(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    result = await db.execute(select(ImageGenConfig).order_by(ImageGenConfig.id).limit(1))
+    config = result.scalar_one_or_none()
+    if not config:
+        # Auto-create default config
+        config = ImageGenConfig()
+        config.api_key = ""
+        db.add(config)
+        await db.commit()
+        await db.refresh(config)
+    return ImageGenConfigResponse(
+        id=config.id,
+        name=config.name,
+        base_url=config.base_url,
+        model_id=config.model_id,
+        api_key_masked=mask_secret(config.api_key),
+        created_at=config.created_at,
+        updated_at=config.updated_at,
+    )
+
+
+@router.put("/image-gen-config", response_model=ImageGenConfigResponse)
+async def update_image_gen_config(req: ImageGenConfigUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    result = await db.execute(select(ImageGenConfig).order_by(ImageGenConfig.id).limit(1))
+    config = result.scalar_one_or_none()
+    if not config:
+        config = ImageGenConfig()
+        db.add(config)
+
+    if req.name is not None:
+        config.name = req.name
+    if req.base_url is not None:
+        config.base_url = req.base_url
+    if req.model_id is not None:
+        config.model_id = req.model_id
+    if req.api_key is not None:
+        config.api_key = req.api_key
+
+    await db.commit()
+    await db.refresh(config)
+    return ImageGenConfigResponse(
+        id=config.id,
+        name=config.name,
+        base_url=config.base_url,
+        model_id=config.model_id,
+        api_key_masked=mask_secret(config.api_key),
+        created_at=config.created_at,
+        updated_at=config.updated_at,
+    )

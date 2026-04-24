@@ -22,13 +22,22 @@ async def build_context_messages(target_node_id: int, db: AsyncSession) -> list:
         if not source_node:
             continue
 
-        # === file type: extract file text as context ===
+        # === file type: extract file text or vision url as context ===
         if source_node.node_type == "file" and source_node.file_url:
-            file_text = get_file_text(source_node.file_url, source_node.file_type)
-            context_messages.append({
-                "role": "user",
-                "content": f'[来自文件节点"{source_node.label}"的内容]\n文件名: {source_node.file_name or "未命名"}\n\n{file_text}',
-            })
+            if source_node.file_type == "image":
+                context_messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f'[来自文件节点"{source_node.label}"的图片]'},
+                        {"type": "image_url", "image_url": {"url": source_node.file_url}},
+                    ],
+                })
+            else:
+                file_text = get_file_text(source_node.file_url, source_node.file_type)
+                context_messages.append({
+                    "role": "user",
+                    "content": f'[来自文件节点"{source_node.label}"的内容]\n文件名: {source_node.file_name or "未命名"}\n\n{file_text}',
+                })
             continue
 
         # === note type: use note_content as context ===

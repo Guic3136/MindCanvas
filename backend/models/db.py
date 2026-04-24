@@ -92,6 +92,10 @@ class Node(Base):
     # === transform 类型专属 ===
     transform_prompt = Column(Text)
     transform_output = Column(Text)
+    transform_format = Column(String(20), default="text")
+    merge_strategy = Column(String(20), default="concat")
+    self_critique = Column(Boolean, default=False)
+    max_iterations = Column(Integer, default=3)
 
     # === compare 类型专属 ===
     compare_model_ids = Column(String(500))
@@ -127,6 +131,26 @@ class Edge(Base):
     project = relationship("Project", back_populates="edges")
     source_node = relationship("Node", foreign_keys=[source_node_id])
     target_node = relationship("Node", foreign_keys=[target_node_id])
+
+
+class ImageGenConfig(Base):
+    __tablename__ = "image_gen_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False, default="default")
+    base_url = Column(String(500), nullable=False, default="https://dashscope.aliyuncs.com/api/v1")
+    model_id = Column(String(200), nullable=False, default="qwen-image-2.0-pro")
+    _api_key = Column("api_key_encrypted", String(500), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    @property
+    def api_key(self) -> str:
+        return decrypt_value(self._api_key)
+
+    @api_key.setter
+    def api_key(self, value: str):
+        self._api_key = encrypt_value(value)
 
 
 class Message(Base):

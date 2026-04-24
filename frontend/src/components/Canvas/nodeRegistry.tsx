@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import type { NodeProps } from '@xyflow/react'
 import {
   MessageSquare, FileUp, StickyNote, Globe, TextCursor,
-  GitCompare, Code2, ImagePlus,
+  GitCompare, ImagePlus,
 } from 'lucide-react'
 import ChatNode from './ChatNode'
 import FileNode from './FileNode'
@@ -10,7 +10,6 @@ import NoteNode from './NoteNode'
 import WebNode from './WebNode'
 import TransformNode from './TransformNode'
 import CompareNode from './CompareNode'
-import CodeNode from './CodeNode'
 import ImageGenNode from './ImageGenNode'
 
 // Placeholder components for future iterations
@@ -84,14 +83,6 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     category: 'process',
     description: '并行调用多个模型对比结果',
     color: '#ef4e8a',
-  },
-  code: {
-    component: CodeNode,
-    label: '代码执行',
-    icon: Code2,
-    category: 'process',
-    description: '运行 Python / JavaScript 代码',
-    color: '#4eef9f',
   },
   image_gen: {
     component: ImageGenNode,

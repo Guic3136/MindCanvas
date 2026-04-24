@@ -18,7 +18,8 @@ from services.llm_client import stream_chat
 from services.context_builder import build_context_messages
 from services.file_parser import get_file_text
 from services.web_fetcher import fetch_webpage_text
-from services.code_runner import run_code
+from services.image_gen_client import generate_image, SIZE_MAP
+from models.db import ImageGenConfig
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["nodes"])
 
@@ -33,8 +34,9 @@ async def create_node(project_id: int, req: NodeCreate, db: AsyncSession = Depen
     for field in [
         'file_url', 'file_name', 'file_type',
         'web_url', 'web_content', 'note_content',
-        'transform_prompt', 'transform_output', 'compare_model_ids',
-        'code_language', 'code_script', 'code_output',
+        'transform_prompt', 'transform_output',
+        'transform_format', 'merge_strategy', 'self_critique', 'max_iterations',
+        'compare_model_ids',
         'image_gen_prompt', 'image_gen_url',
     ]:
         value = getattr(req, field, None)
@@ -215,7 +217,11 @@ async def chat(project_id: int, nid: int, body: dict, db: AsyncSession = Depends
 @router.post("/nodes/{nid}/fetch-web")
 async def fetch_web(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     await verify_project_ownership(project_id, user, db)
-    node = await db.get(Node, nid)
+
+    result = await db.execute(
+        select(Node).where(Node.id == nid, Node.project_id == project_id).options(selectinload(Node.model).selectinload(Model.provider))
+    )
+    node = result.scalar_one_or_none()
     if not node or node.project_id != project_id:
         raise HTTPException(status_code=404, detail="Node not found")
 
@@ -224,6 +230,23 @@ async def fetch_web(project_id: int, nid: int, body: dict, db: AsyncSession = De
         raise HTTPException(status_code=400, detail="URL cannot be empty")
 
     text = await fetch_webpage_text(url)
+
+    # Summarize if content exceeds 10000 chars
+    if len(text) > 10000:
+        provider = node.model.provider
+        summary_prompt = (
+            "请提炼以下网页的核心内容，保留关键事实、数据和结论，去除广告、导航等无关信息。"
+            "输出控制在 5000 字符以内。"
+        )
+        messages = [
+            {"role": "system", "content": summary_prompt},
+            {"role": "user", "content": text},
+        ]
+        tokens = []
+        async for token in stream_chat(provider.base_url, provider.api_key, node.model.model_id, messages):
+            tokens.append(token)
+        text = "".join(tokens)
+
     node.web_url = url
     node.web_content = text
     await db.commit()
@@ -234,8 +257,12 @@ async def fetch_web(project_id: int, nid: int, body: dict, db: AsyncSession = De
 @router.post("/nodes/{nid}/transform")
 async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     await verify_project_ownership(project_id, user, db)
-    node = await db.get(Node, nid)
-    if not node or node.project_id != project_id:
+
+    result = await db.execute(
+        select(Node).where(Node.id == nid, Node.project_id == project_id).options(selectinload(Node.model).selectinload(Model.provider))
+    )
+    node = result.scalar_one_or_none()
+    if not node:
         raise HTTPException(status_code=404, detail="Node not found")
 
     prompt = body.get("prompt", "").strip()
@@ -244,11 +271,52 @@ async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession
 
     # Build context from upstream nodes
     context = await build_context_messages(nid, db)
-    input_text = ""
-    if context:
-        input_text = "\n\n".join(c.get("content", "") for c in context)
+    upstream_contents = []
+    upstream_variables = {}
+    for c in context:
+        content = c.get("content", "")
+        upstream_contents.append(content)
+        # Try parse JSON to extract template variables
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                upstream_variables.update(parsed)
+        except (json.JSONDecodeError, TypeError):
+            pass
 
-    system_msg = f"你是一个文本处理助手。请根据以下指令处理输入文本：\n\n指令：{prompt}\n\n只输出处理后的结果，不要添加解释。"
+    # Template filling: replace {{variable}} in prompt
+    filled_prompt = prompt
+    for key, val in upstream_variables.items():
+        if isinstance(val, str):
+            filled_prompt = filled_prompt.replace(f"{{{{{key}}}}}", val)
+
+    # Multi-input merge based on merge_strategy
+    merge_strategy = node.merge_strategy or "concat"
+    if merge_strategy == "concat":
+        input_text = "\n\n".join(upstream_contents)
+    elif merge_strategy == "summarize":
+        input_text = "请综合以下多个来源，生成统一摘要：\n\n" + "\n\n---\n\n".join(upstream_contents)
+    elif merge_strategy == "diff":
+        if len(upstream_contents) >= 2:
+            input_text = f"请比较以下两个来源的差异：\n\n来源一：\n{upstream_contents[0]}\n\n来源二：\n{upstream_contents[1]}"
+        else:
+            input_text = "\n\n".join(upstream_contents)
+    else:
+        input_text = "\n\n".join(upstream_contents)
+
+    # Structured output format constraints
+    transform_format = node.transform_format or "text"
+    format_constraints = {
+        "json": "You MUST output valid JSON. Do not include markdown code block markers.",
+        "yaml": "You MUST output valid YAML.",
+        "markdown_table": "You MUST output a Markdown table.",
+    }
+    format_instruction = format_constraints.get(transform_format, "")
+
+    system_msg = "你是一个文本处理助手。请根据以下指令处理输入文本：\n\n指令：" + filled_prompt
+    if format_instruction:
+        system_msg += f"\n\n{format_instruction}"
+    system_msg += "\n\n只输出处理后的结果，不要添加解释。"
     if input_text:
         system_msg += f"\n\n输入文本：\n{input_text}"
 
@@ -263,11 +331,76 @@ async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession
     base_url = provider.base_url
     api_key = provider.api_key
 
-    result_tokens = []
-    async for token in stream_chat(base_url, api_key, model_id, messages):
-        result_tokens.append(token)
+    async def _run_chat(msgs: list) -> str:
+        tokens = []
+        async for token in stream_chat(base_url, api_key, model_id, msgs):
+            tokens.append(token)
+        return "".join(tokens)
 
-    output = "".join(result_tokens)
+    output = await _run_chat(messages)
+
+    # Self-critique loop
+    if node.self_critique:
+        max_iterations = node.max_iterations or 3
+        best_output = output
+        best_rating = 0
+
+        for iteration in range(max_iterations):
+            critique_prompt = (
+                f"请评价以下输出是否满足要求：'{filled_prompt}'\n\n"
+                f"输出内容：\n{output}\n\n"
+                "请从1到10打分，并列出存在的问题。格式：\n评分：X\n问题：..."
+            )
+            critique_msgs = [
+                {"role": "system", "content": "你是一个严格的评审专家。"},
+                {"role": "user", "content": critique_prompt},
+            ]
+            critique_result = await _run_chat(critique_msgs)
+
+            # Parse rating
+            rating = 0
+            for line in critique_result.split("\n"):
+                if line.startswith("评分：") or line.startswith("评分:"):
+                    try:
+                        rating = int(line.split("：")[-1].split(":")[-1].strip().split()[0])
+                    except (ValueError, IndexError):
+                        pass
+                    break
+
+            if rating > best_rating:
+                best_rating = rating
+                best_output = output
+
+            if rating >= 8 or iteration >= max_iterations - 1:
+                break
+
+            # Retry with feedback
+            retry_prompt = (
+                f"原始指令：{filled_prompt}\n\n"
+                f"上次输出：{output}\n\n"
+                f"评审反馈（评分 {rating}/10）：{critique_result}\n\n"
+                "请根据反馈改进输出，只输出最终结果。"
+            )
+            if format_instruction:
+                retry_prompt += f"\n{format_instruction}"
+            retry_msgs = [
+                {"role": "system", "content": retry_prompt},
+                {"role": "user", "content": "请输出改进后的结果。"},
+            ]
+            output = await _run_chat(retry_msgs)
+
+        output = best_output
+
+    # Validate structured output
+    if transform_format == "json":
+        try:
+            json.loads(output)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=422, detail=f"Generated output is not valid JSON: {e}")
+    elif transform_format == "yaml":
+        if not output.strip() or output.strip()[0] not in "-{|":
+            raise HTTPException(status_code=422, detail="Generated output does not appear to be valid YAML")
+
     node.transform_prompt = prompt
     node.transform_output = output
     await db.commit()
@@ -301,53 +434,50 @@ async def compare_models(project_id: int, nid: int, body: dict, db: AsyncSession
     messages = [{"role": "user", "content": input_text}]
 
     # Fetch models
-    model_results = {}
     from sqlalchemy import select as sa_select
     from models.db import Model as ModelDB
 
+    models = []
     for mid in model_ids:
         m_result = await db.execute(sa_select(ModelDB).where(ModelDB.id == mid).options(selectinload(ModelDB.provider)))
         model = m_result.scalar_one_or_none()
-        if not model:
-            continue
+        if model:
+            models.append(model)
 
-        provider = model.provider
-        try:
-            tokens = []
-            async for token in stream_chat(provider.base_url, provider.api_key, model.model_id, messages):
-                tokens.append(token)
-            model_results[mid] = "".join(tokens)
-        except Exception as e:
-            model_results[mid] = f"[错误: {e}]"
+    if len(models) < 2:
+        raise HTTPException(status_code=400, detail="Valid models less than 2")
 
-    import json
     node.compare_model_ids = json.dumps(model_ids)
     await db.commit()
-    return {"results": model_results}
 
+    # Parallel streaming with queue
+    queue: asyncio.Queue = asyncio.Queue()
 
-@router.post("/nodes/{nid}/run-code")
-async def run_code_endpoint(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    await verify_project_ownership(project_id, user, db)
-    node = await db.get(Node, nid)
-    if not node or node.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Node not found")
+    async def _stream_one(model: ModelDB):
+        try:
+            provider = model.provider
+            async for token in stream_chat(provider.base_url, provider.api_key, model.model_id, messages):
+                await queue.put({"model_id": model.id, "model_name": model.display_name, "chunk": token})
+            await queue.put({"model_id": model.id, "model_name": model.display_name, "done": True})
+        except Exception as e:
+            await queue.put({"model_id": model.id, "model_name": model.display_name, "error": str(e)})
 
-    language = body.get("language", "python")
-    script = body.get("script", "").strip()
-    if not script:
-        raise HTTPException(status_code=400, detail="Script cannot be empty")
+    tasks = [asyncio.create_task(_stream_one(m)) for m in models]
 
-    output = await run_code(language, script)
-    node.code_language = language
-    node.code_script = script
-    node.code_output = output
-    await db.commit()
-    return {"output": output}
+    async def event_generator():
+        completed = 0
+        while completed < len(tasks):
+            item = await queue.get()
+            if item.get("done") or item.get("error"):
+                completed += 1
+            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'all_done'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.post("/nodes/{nid}/generate-image")
-async def generate_image(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def generate_image_endpoint(project_id: int, nid: int, body: dict, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     await verify_project_ownership(project_id, user, db)
     node = await db.get(Node, nid)
     if not node or node.project_id != project_id:
@@ -357,11 +487,33 @@ async def generate_image(project_id: int, nid: int, body: dict, db: AsyncSession
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    # For now, return a placeholder since image generation requires external API setup
-    # In production, this would call DALL-E / Midjourney / Stable Diffusion API
-    placeholder_url = "https://placehold.co/512x512/2d224d/c2ef4e?text=Image+Generation+Placeholder"
+    # Get image generation config
+    from sqlalchemy import select as sa_select
+    result = await db.execute(sa_select(ImageGenConfig).order_by(ImageGenConfig.id).limit(1))
+    config = result.scalar_one_or_none()
+    if not config or not config.api_key:
+        raise HTTPException(status_code=400, detail="Image generation not configured. Please set up in admin panel.")
+
+    size_label = body.get("size", "方形图")
+    size = SIZE_MAP.get(size_label, "1024*1024")
+    negative_prompt = body.get("negative_prompt", "")
+    n = min(body.get("n", 1), 4)
+
+    try:
+        image_urls = await generate_image(
+            api_key=config.api_key,
+            prompt=prompt,
+            base_url=config.base_url,
+            model_id=config.model_id,
+            size=size,
+            negative_prompt=negative_prompt,
+            n=n,
+            prompt_extend=False,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
 
     node.image_gen_prompt = prompt
-    node.image_gen_url = placeholder_url
+    node.image_gen_url = image_urls[0] if image_urls else ""
     await db.commit()
-    return {"url": placeholder_url, "prompt": prompt}
+    return {"urls": image_urls, "prompt": prompt}

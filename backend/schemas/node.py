@@ -16,10 +16,11 @@ class NodeCreate(BaseModel):
     note_content: Optional[str] = None
     transform_prompt: Optional[str] = None
     transform_output: Optional[str] = None
+    transform_format: Optional[str] = None
+    merge_strategy: Optional[str] = None
+    self_critique: Optional[bool] = None
+    max_iterations: Optional[int] = None
     compare_model_ids: Optional[str] = None
-    code_language: Optional[str] = None
-    code_script: Optional[str] = None
-    code_output: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
 
@@ -40,10 +41,11 @@ class NodeUpdate(BaseModel):
     note_content: Optional[str] = None
     transform_prompt: Optional[str] = None
     transform_output: Optional[str] = None
+    transform_format: Optional[str] = None
+    merge_strategy: Optional[str] = None
+    self_critique: Optional[bool] = None
+    max_iterations: Optional[int] = None
     compare_model_ids: Optional[str] = None
-    code_language: Optional[str] = None
-    code_script: Optional[str] = None
-    code_output: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
 
@@ -66,10 +68,11 @@ class NodeResponse(BaseModel):
     note_content: Optional[str] = None
     transform_prompt: Optional[str] = None
     transform_output: Optional[str] = None
+    transform_format: Optional[str] = None
+    merge_strategy: Optional[str] = None
+    self_critique: Optional[bool] = None
+    max_iterations: Optional[int] = None
     compare_model_ids: Optional[str] = None
-    code_language: Optional[str] = None
-    code_script: Optional[str] = None
-    code_output: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
 

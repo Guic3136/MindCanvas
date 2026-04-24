@@ -107,16 +107,33 @@ async def upload_file(
     with open(file_path, "wb") as f:
         f.write(content)
 
-    # Map extension to file_type
     file_type_map = {
         "pdf": "pdf",
         "png": "image", "jpg": "image", "jpeg": "image", "gif": "image", "webp": "image",
         "xlsx": "excel", "xls": "excel", "csv": "excel",
     }
+    file_type = file_type_map.get(ext, "unknown")
+
+    # Compress images > 2MB
+    if file_type == "image" and len(content) > 2 * 1024 * 1024:
+        try:
+            from PIL import Image
+            img = Image.open(file_path)
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            save_kwargs = {"optimize": True, "quality": 85}
+            if ext in ("png", "gif"):
+                save_kwargs = {"optimize": True}
+            img.save(file_path, **save_kwargs)
+        except Exception:
+            pass
 
     return {
         "url": f"/uploads/{pid}/{safe_name}",
         "name": file.filename,
-        "type": file_type_map.get(ext, "unknown"),
-        "size": len(content),
+        "type": file_type,
+        "size": os.path.getsize(file_path),
     }
