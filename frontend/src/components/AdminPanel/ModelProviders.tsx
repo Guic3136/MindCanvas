@@ -85,10 +85,16 @@ export default function ModelProviders() {
                     <span className={`text-xs px-1.5 py-0.5 rounded ${m.is_enabled ? 'bg-success-muted text-brand' : 'bg-danger-muted text-danger'}`}>
                       {m.is_enabled ? '启用' : '禁用'}
                     </span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${m.supports_vision ? 'bg-brand-muted text-brand' : 'bg-bg-hover text-text-muted'}`}>
+                      {m.supports_vision ? 'Vision' : '无Vision'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => { adminApi.updateModel(m.id, { is_enabled: !m.is_enabled }).then(load) }} className="text-xs text-text-secondary hover:text-text-primary transition-ui">
                       {m.is_enabled ? '禁用' : '启用'}
+                    </button>
+                    <button onClick={() => { adminApi.updateModel(m.id, { supports_vision: !m.supports_vision }).then(load) }} className="text-xs text-text-secondary hover:text-text-primary transition-ui">
+                      {m.supports_vision ? '关闭Vision' : '开启Vision'}
                     </button>
                     <button onClick={() => { adminApi.deleteModel(m.id).then(load) }} className="text-text-muted hover:text-danger transition-ui"><Trash2 size={16} /></button>
                   </div>

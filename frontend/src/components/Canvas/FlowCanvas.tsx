@@ -69,6 +69,13 @@ function FlowCanvasInner() {
         note_content: n.note_content,
         transform_prompt: n.transform_prompt,
         transform_output: n.transform_output,
+        transform_format: n.transform_format,
+        merge_strategy: n.merge_strategy,
+        self_critique: n.self_critique,
+        max_iterations: n.max_iterations,
+        batch_mode: n.batch_mode,
+        routing_rules: n.routing_rules,
+        transform_route: n.transform_route,
         compare_model_ids: n.compare_model_ids,
         code_language: n.code_language,
         code_script: n.code_script,
@@ -89,6 +96,7 @@ function FlowCanvasInner() {
       type: 'custom',
       data: {
         context_mode: e.context_mode,
+        route_tag: e.route_tag,
         db_edge_id: e.id,
         onModeChange: (edgeId: number, mode: string) => updateEdgeMode(edgeId, mode),
         onRemove: (edgeId: number) => removeDbEdge(edgeId),
@@ -109,7 +117,7 @@ function FlowCanvasInner() {
       if (!current) return true
       const d1 = current.data as Record<string, unknown>
       const d2 = incoming.data as Record<string, unknown>
-      const keys = ['label', 'model_id', 'node_type', 'file_url', 'file_name', 'file_type', 'web_url', 'web_content', 'note_content', 'transform_prompt', 'transform_output', 'compare_model_ids', 'code_language', 'code_script', 'code_output', 'image_gen_prompt', 'image_gen_url']
+      const keys = ['label', 'model_id', 'node_type', 'file_url', 'file_name', 'file_type', 'web_url', 'web_content', 'note_content', 'transform_prompt', 'transform_output', 'transform_format', 'merge_strategy', 'self_critique', 'max_iterations', 'batch_mode', 'routing_rules', 'transform_route', 'compare_model_ids', 'code_language', 'code_script', 'code_output', 'image_gen_prompt', 'image_gen_url']
       return keys.some((k) => d1[k] !== d2[k])
     })
     if (idsChanged || dataChanged) {
@@ -128,6 +136,13 @@ function FlowCanvasInner() {
 
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return
+    const sourceNode = project?.nodes.find((n) => String(n.id) === connection.source)
+    const targetNode = project?.nodes.find((n) => String(n.id) === connection.target)
+    const targetModel = models.find((m) => m.id === targetNode?.model_id)
+    if (sourceNode?.node_type === 'file' && sourceNode.file_type === 'image' && targetModel && !targetModel.supports_vision) {
+      toast.error('目标模型不支持图片输入，请选择支持 Vision 的模型')
+      return
+    }
     const exists = edges.some(
       (e) => e.source === connection.source && e.target === connection.target
     )
@@ -135,8 +150,8 @@ function FlowCanvasInner() {
       toast.warning('连线已存在')
       return
     }
-    addDbEdge(Number(connection.source), Number(connection.target))
-  }, [addDbEdge, edges])
+    addDbEdge(Number(connection.source), Number(connection.target), connection.sourceHandle || undefined)
+  }, [addDbEdge, edges, project, models])
 
   const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
     updateNodePosition(Number(node.id), node.position)

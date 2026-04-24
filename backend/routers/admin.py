@@ -125,6 +125,8 @@ async def update_model(mid: int, req: ModelUpdate, db: AsyncSession = Depends(ge
         model.display_name = req.display_name
     if req.is_enabled is not None:
         model.is_enabled = req.is_enabled
+    if req.supports_vision is not None:
+        model.supports_vision = req.supports_vision
     await db.commit()
     await db.refresh(model)
     return model

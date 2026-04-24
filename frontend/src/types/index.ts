@@ -18,6 +18,7 @@ export interface ModelInfo {
   model_id: string
   display_name: string
   is_enabled: boolean
+  supports_vision?: boolean
 }
 
 export interface Project {
@@ -58,6 +59,10 @@ export interface NodeInfo {
   // transform
   transform_prompt?: string
   transform_output?: string
+  transform_format?: string
+  merge_strategy?: string
+  self_critique?: boolean
+  max_iterations?: number
   // compare
   compare_model_ids?: string
   // code
@@ -67,6 +72,10 @@ export interface NodeInfo {
   // image_gen
   image_gen_prompt?: string
   image_gen_url?: string
+  // transform extensions
+  batch_mode?: boolean
+  routing_rules?: string
+  transform_route?: string
 }
 
 export interface EdgeInfo {
@@ -74,6 +83,7 @@ export interface EdgeInfo {
   source_node_id: number
   target_node_id: number
   context_mode: string
+  route_tag?: string
 }
 
 export interface Message {

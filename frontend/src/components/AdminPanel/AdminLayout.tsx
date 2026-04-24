@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Server, Users, ArrowLeft } from 'lucide-react'
+import { Server, Users, Image, ArrowLeft } from 'lucide-react'
 import ModelProviders from './ModelProviders'
 import UserManagement from './UserManagement'
+import ImageGenConfig from './ImageGenConfig'
 
-type Tab = 'providers' | 'users'
+type Tab = 'providers' | 'users' | 'image-gen'
 
 export default function AdminLayout() {
   const [tab, setTab] = useState<Tab>('providers')
@@ -28,10 +29,17 @@ export default function AdminLayout() {
           >
             <Users size={16} /> 用户管理
           </button>
+          <button
+            onClick={() => setTab('image-gen')}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-ui ${tab === 'image-gen' ? 'bg-bg-surface text-text-primary border border-border inset-highlight' : 'text-text-secondary hover:text-text-primary'}`}
+          >
+            <Image size={16} /> 图片生成配置
+          </button>
         </nav>
         <main className="flex-1 p-6">
           {tab === 'providers' && <ModelProviders />}
           {tab === 'users' && <UserManagement />}
+          {tab === 'image-gen' && <ImageGenConfig />}
         </main>
       </div>
     </div>

@@ -23,6 +23,8 @@ class NodeCreate(BaseModel):
     compare_model_ids: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
+    batch_mode: Optional[bool] = None
+    routing_rules: Optional[str] = None
 
 
 class NodeUpdate(BaseModel):
@@ -48,6 +50,8 @@ class NodeUpdate(BaseModel):
     compare_model_ids: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
+    batch_mode: Optional[bool] = None
+    routing_rules: Optional[str] = None
 
 
 class NodeResponse(BaseModel):
@@ -75,6 +79,9 @@ class NodeResponse(BaseModel):
     compare_model_ids: Optional[str] = None
     image_gen_prompt: Optional[str] = None
     image_gen_url: Optional[str] = None
+    batch_mode: Optional[bool] = None
+    routing_rules: Optional[str] = None
+    transform_route: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -84,10 +91,12 @@ class EdgeCreate(BaseModel):
     source_node_id: int
     target_node_id: int
     context_mode: str = "full_history"
+    route_tag: Optional[str] = None
 
 
 class EdgeUpdate(BaseModel):
     context_mode: str
+    route_tag: Optional[str] = None
 
 
 class EdgeResponse(BaseModel):
@@ -96,6 +105,7 @@ class EdgeResponse(BaseModel):
     source_node_id: int
     target_node_id: int
     context_mode: str
+    route_tag: Optional[str] = None
 
     class Config:
         from_attributes = True

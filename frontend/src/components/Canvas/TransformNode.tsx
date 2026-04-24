@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { NodeProps } from '@xyflow/react'
-import { NodeResizer } from '@xyflow/react'
+import { NodeResizer, Handle, Position } from '@xyflow/react'
 import { Play, Loader2, ChevronDown, Check } from 'lucide-react'
 import ChatNodeHeader from './ChatNodeHeader'
 import { useCanvasStore } from '../../stores/canvasStore'
@@ -21,6 +21,8 @@ interface TransformNodeData {
   merge_strategy?: string
   self_critique?: boolean
   max_iterations?: number
+  batch_mode?: boolean
+  routing_rules?: string
 }
 
 const FORMAT_OPTIONS = [
@@ -49,6 +51,8 @@ export default function TransformNode({ data, selected, width, height, type }: N
     merge_strategy,
     self_critique,
     max_iterations,
+    batch_mode,
+    routing_rules,
   } = data as unknown as TransformNodeData
   const { models, updateNodeLabel, updateNodeSize, removeNode } = useCanvasStore()
 
@@ -61,6 +65,8 @@ export default function TransformNode({ data, selected, width, height, type }: N
   const [critique, setCritique] = useState(self_critique || false)
   const [iterations, setIterations] = useState(max_iterations ?? 3)
   const [selectedModel, setSelectedModel] = useState(model_id || (models[0]?.id ?? 0))
+  const [batchMode, setBatchMode] = useState(batch_mode || false)
+  const [routingRules, setRoutingRules] = useState(routing_rules || '')
 
   useEffect(() => {
     setPrompt(transform_prompt || '')
@@ -70,7 +76,9 @@ export default function TransformNode({ data, selected, width, height, type }: N
     setCritique(self_critique || false)
     setIterations(max_iterations ?? 3)
     setSelectedModel(model_id || (models[0]?.id ?? 0))
-  }, [transform_prompt, transform_output, transform_format, merge_strategy, self_critique, max_iterations, model_id, models])
+    setBatchMode(batch_mode || false)
+    setRoutingRules(routing_rules || '')
+  }, [transform_prompt, transform_output, transform_format, merge_strategy, self_critique, max_iterations, model_id, models, batch_mode, routing_rules])
 
   const saveField = useCallback(
     async (field: string, value: unknown) => {
@@ -123,6 +131,22 @@ export default function TransformNode({ data, selected, width, height, type }: N
     [saveField]
   )
 
+  const handleBatchModeChange = useCallback(
+    (value: boolean) => {
+      setBatchMode(value)
+      saveField('batch_mode', value)
+    },
+    [saveField]
+  )
+
+  const handleRoutingRulesChange = useCallback(
+    (value: string) => {
+      setRoutingRules(value)
+      saveField('routing_rules', value)
+    },
+    [saveField]
+  )
+
   const handleRun = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error('请输入转换指令')
@@ -137,6 +161,8 @@ export default function TransformNode({ data, selected, width, height, type }: N
         self_critique: critique,
         max_iterations: iterations,
         model_id: selectedModel,
+        batch_mode: batchMode,
+        routing_rules: routingRules,
       })
       const { data: result } = await client.post(`/projects/${project_id}/nodes/${db_node_id}/transform`, {
         prompt: prompt.trim(),
@@ -149,7 +175,7 @@ export default function TransformNode({ data, selected, width, height, type }: N
     } finally {
       setRunning(false)
     }
-  }, [project_id, db_node_id, prompt, format, merge, critique, iterations, selectedModel])
+  }, [project_id, db_node_id, prompt, format, merge, critique, iterations, selectedModel, batchMode, routingRules])
 
   return (
     <>
@@ -233,6 +259,37 @@ export default function TransformNode({ data, selected, width, height, type }: N
             </div>
           )}
         </div>
+
+        {/* Batch mode */}
+        <div className="px-3 pb-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={batchMode}
+              onChange={(e) => handleBatchModeChange(e.target.checked)}
+              className="rounded border-border bg-bg-input text-brand focus:ring-brand"
+            />
+            <span className="text-sm text-text-primary">批量模式</span>
+          </label>
+          <div className="mt-1 text-xs text-text-muted">上游为 JSON 数组时逐项处理</div>
+        </div>
+
+        {/* Routing rules */}
+        <div className="px-3 pb-2">
+          <div className="text-xs text-text-muted mb-1">路由规则（可选）</div>
+          <textarea
+            value={routingRules}
+            onChange={(e) => handleRoutingRulesChange(e.target.value)}
+            placeholder={`通过,批准 -> a\n拒绝,驳回 -> b\ndefault -> c`}
+            rows={2}
+            className="w-full bg-bg-input text-text-primary text-sm rounded px-3 py-2 outline-none border border-border resize-none"
+          />
+        </div>
+
+        {/* Output handles */}
+        <Handle type="source" position={Position.Right} id="a" style={{ top: '35%', background: '#4ec2ef' }} />
+        <Handle type="source" position={Position.Right} id="b" style={{ top: '50%', background: '#ef8a4e' }} />
+        <Handle type="source" position={Position.Right} id="c" style={{ top: '65%', background: '#c2ef4e' }} />
 
         {/* Run button */}
         <div className="px-3 pb-2">

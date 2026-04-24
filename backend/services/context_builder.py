@@ -22,6 +22,11 @@ async def build_context_messages(target_node_id: int, db: AsyncSession) -> list:
         if not source_node:
             continue
 
+        # Route filter for transform nodes
+        if source_node.node_type == "transform" and source_node.routing_rules:
+            if edge.route_tag and edge.route_tag != source_node.transform_route:
+                continue
+
         # === file type: extract file text or vision url as context ===
         if source_node.node_type == "file" and source_node.file_url:
             if source_node.file_type == "image":

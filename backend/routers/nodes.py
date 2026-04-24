@@ -38,6 +38,7 @@ async def create_node(project_id: int, req: NodeCreate, db: AsyncSession = Depen
         'transform_format', 'merge_strategy', 'self_critique', 'max_iterations',
         'compare_model_ids',
         'image_gen_prompt', 'image_gen_url',
+        'batch_mode', 'routing_rules', 'transform_route',
     ]:
         value = getattr(req, field, None)
         if value is not None:
@@ -119,7 +120,7 @@ async def create_edge(project_id: int, req: EdgeCreate, db: AsyncSession = Depen
                 visited.add(neighbor)
                 queue.append(neighbor)
 
-    edge = Edge(project_id=project_id, source_node_id=req.source_node_id, target_node_id=req.target_node_id, context_mode=req.context_mode)
+    edge = Edge(project_id=project_id, source_node_id=req.source_node_id, target_node_id=req.target_node_id, context_mode=req.context_mode, route_tag=req.route_tag)
     db.add(edge)
     await db.commit()
     await db.refresh(edge)
@@ -337,59 +338,98 @@ async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession
             tokens.append(token)
         return "".join(tokens)
 
-    output = await _run_chat(messages)
+    async def _run_single(item_prompt: str, item_text: str) -> str:
+        item_system = "你是一个文本处理助手。请根据以下指令处理输入文本：\n\n指令：" + item_prompt
+        if format_instruction:
+            item_system += f"\n\n{format_instruction}"
+        item_system += "\n\n只输出处理后的结果，不要添加解释。"
+        if item_text:
+            item_system += f"\n\n输入文本：\n{item_text}"
+        item_messages = [{"role": "system", "content": item_system}]
+        if item_text:
+            item_messages.append({"role": "user", "content": item_text})
+        else:
+            item_messages.append({"role": "user", "content": "请执行上述指令。"})
+        return await _run_chat(item_messages)
 
-    # Self-critique loop
-    if node.self_critique:
-        max_iterations = node.max_iterations or 3
-        best_output = output
-        best_rating = 0
+    # Batch mode: if upstream contains a JSON array, process each item
+    batch_outputs = []
+    if node.batch_mode:
+        for content in upstream_contents:
+            try:
+                items = json.loads(content)
+                if isinstance(items, list):
+                    for item in items:
+                        item_prompt = prompt
+                        item_text = ""
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if isinstance(v, str):
+                                    item_prompt = item_prompt.replace(f"{{{{{k}}}}}", v)
+                            item_text = item.get("content") or item.get("text") or str(item)
+                        elif isinstance(item, str):
+                            item_text = item
+                        batch_outputs.append(await _run_single(item_prompt, item_text))
+                    break
+            except (json.JSONDecodeError, TypeError):
+                pass
 
-        for iteration in range(max_iterations):
-            critique_prompt = (
-                f"请评价以下输出是否满足要求：'{filled_prompt}'\n\n"
-                f"输出内容：\n{output}\n\n"
-                "请从1到10打分，并列出存在的问题。格式：\n评分：X\n问题：..."
-            )
-            critique_msgs = [
-                {"role": "system", "content": "你是一个严格的评审专家。"},
-                {"role": "user", "content": critique_prompt},
-            ]
-            critique_result = await _run_chat(critique_msgs)
+    if batch_outputs:
+        output = "\n\n---\n\n".join(batch_outputs)
+    else:
+        output = await _run_chat(messages)
 
-            # Parse rating
-            rating = 0
-            for line in critique_result.split("\n"):
-                if line.startswith("评分：") or line.startswith("评分:"):
-                    try:
-                        rating = int(line.split("：")[-1].split(":")[-1].strip().split()[0])
-                    except (ValueError, IndexError):
-                        pass
+        # Self-critique loop
+        if node.self_critique:
+            max_iterations = node.max_iterations or 3
+            best_output = output
+            best_rating = 0
+
+            for iteration in range(max_iterations):
+                critique_prompt = (
+                    f"请评价以下输出是否满足要求：'{filled_prompt}'\n\n"
+                    f"输出内容：\n{output}\n\n"
+                    "请从1到10打分，并列出存在的问题。格式：\n评分：X\n问题：..."
+                )
+                critique_msgs = [
+                    {"role": "system", "content": "你是一个严格的评审专家。"},
+                    {"role": "user", "content": critique_prompt},
+                ]
+                critique_result = await _run_chat(critique_msgs)
+
+                # Parse rating
+                rating = 0
+                for line in critique_result.split("\n"):
+                    if line.startswith("评分：") or line.startswith("评分:"):
+                        try:
+                            rating = int(line.split("：")[-1].split(":")[-1].strip().split()[0])
+                        except (ValueError, IndexError):
+                            pass
+                        break
+
+                if rating > best_rating:
+                    best_rating = rating
+                    best_output = output
+
+                if rating >= 8 or iteration >= max_iterations - 1:
                     break
 
-            if rating > best_rating:
-                best_rating = rating
-                best_output = output
+                # Retry with feedback
+                retry_prompt = (
+                    f"原始指令：{filled_prompt}\n\n"
+                    f"上次输出：{output}\n\n"
+                    f"评审反馈（评分 {rating}/10）：{critique_result}\n\n"
+                    "请根据反馈改进输出，只输出最终结果。"
+                )
+                if format_instruction:
+                    retry_prompt += f"\n{format_instruction}"
+                retry_msgs = [
+                    {"role": "system", "content": retry_prompt},
+                    {"role": "user", "content": "请输出改进后的结果。"},
+                ]
+                output = await _run_chat(retry_msgs)
 
-            if rating >= 8 or iteration >= max_iterations - 1:
-                break
-
-            # Retry with feedback
-            retry_prompt = (
-                f"原始指令：{filled_prompt}\n\n"
-                f"上次输出：{output}\n\n"
-                f"评审反馈（评分 {rating}/10）：{critique_result}\n\n"
-                "请根据反馈改进输出，只输出最终结果。"
-            )
-            if format_instruction:
-                retry_prompt += f"\n{format_instruction}"
-            retry_msgs = [
-                {"role": "system", "content": retry_prompt},
-                {"role": "user", "content": "请输出改进后的结果。"},
-            ]
-            output = await _run_chat(retry_msgs)
-
-        output = best_output
+            output = best_output
 
     # Validate structured output
     if transform_format == "json":
@@ -401,8 +441,29 @@ async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession
         if not output.strip() or output.strip()[0] not in "-{|":
             raise HTTPException(status_code=422, detail="Generated output does not appear to be valid YAML")
 
+    # Routing rules: match output to route
+    route = None
+    if node.routing_rules:
+        for line in node.routing_rules.strip().split("\n"):
+            line = line.strip()
+            if "->" not in line:
+                continue
+            left, right = line.rsplit("->", 1)
+            tag = right.strip()
+            if left.strip().lower() == "default":
+                route = tag
+                break
+            keywords = [k.strip() for k in left.split(",")]
+            for kw in keywords:
+                if kw and kw in output:
+                    route = tag
+                    break
+            if route:
+                break
+
     node.transform_prompt = prompt
     node.transform_output = output
+    node.transform_route = route
     await db.commit()
     await db.refresh(node)
     return {"output": output}

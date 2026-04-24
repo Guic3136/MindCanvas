@@ -4,6 +4,7 @@ import { X, Settings } from 'lucide-react'
 
 interface CustomEdgeData {
   context_mode: string
+  route_tag?: string
   db_edge_id: number
   onModeChange: (edgeId: number, mode: string) => void
   onRemove: (edgeId: number) => void
@@ -23,7 +24,7 @@ export default function CustomEdge({
     <>
       <BaseEdge
         path={edgePath}
-        style={{ stroke: selected ? 'var(--color-brand)' : '#6a5fc1', strokeWidth: selected ? 2.5 : 1.5 }}
+        style={{ stroke: selected ? 'var(--color-brand)' : edgeData.route_tag ? '#4ec2ef' : '#6a5fc1', strokeWidth: selected ? 2.5 : 1.5 }}
         markerEnd="url(#arrow)"
       />
       <EdgeLabelRenderer>
@@ -31,6 +32,11 @@ export default function CustomEdge({
           style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
           className="nodrag nopan"
         >
+          {edgeData.route_tag && (
+            <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-accent-muted text-accent text-[10px] px-1.5 py-0.5 rounded border border-accent/20 whitespace-nowrap">
+              {edgeData.route_tag}
+            </span>
+          )}
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="bg-bg-elevated border border-border-strong rounded-full p-2.5 text-text-muted hover:text-text-primary hover:border-border-hover shadow-popover transition-ui"

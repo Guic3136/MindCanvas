@@ -30,7 +30,7 @@ export async function createModel(data: { provider_id: number; model_id: string;
   return result
 }
 
-export async function updateModel(id: number, data: { is_enabled?: boolean; display_name?: string; model_id?: string }): Promise<ModelInfo> {
+export async function updateModel(id: number, data: { is_enabled?: boolean; display_name?: string; model_id?: string; supports_vision?: boolean }): Promise<ModelInfo> {
   const { data: result } = await client.put<ModelInfo>(`/admin/models/${id}`, data)
   return result
 }
@@ -58,4 +58,24 @@ export async function createUser(data: { username: string; password: string }): 
 
 export async function deleteUser(id: number): Promise<void> {
   await client.delete(`/admin/users/${id}`)
+}
+
+export interface ImageGenConfig {
+  id: number
+  name: string
+  base_url: string
+  model_id: string
+  api_key_masked: string
+  created_at: string
+  updated_at: string
+}
+
+export async function getImageGenConfig(): Promise<ImageGenConfig> {
+  const { data } = await client.get<ImageGenConfig>('/admin/image-gen-config')
+  return data
+}
+
+export async function updateImageGenConfig(data: { name?: string; base_url?: string; model_id?: string; api_key?: string }): Promise<ImageGenConfig> {
+  const { data: result } = await client.put<ImageGenConfig>('/admin/image-gen-config', data)
+  return result
 }

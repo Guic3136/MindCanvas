@@ -45,6 +45,7 @@ class Model(Base):
     model_id = Column(String(200), nullable=False)
     display_name = Column(String(200), nullable=False)
     is_enabled = Column(Boolean, default=True)
+    supports_vision = Column(Boolean, default=False)
 
     provider = relationship("ModelProvider", back_populates="models")
 
@@ -109,6 +110,11 @@ class Node(Base):
     image_gen_prompt = Column(Text)
     image_gen_url = Column(String(500))
 
+    # === transform 扩展 ===
+    batch_mode = Column(Boolean, default=False)
+    routing_rules = Column(Text)
+    transform_route = Column(String(20))
+
     project = relationship("Project", back_populates="nodes")
     model = relationship("Model")
     messages = relationship("Message", back_populates="node", cascade="all, delete-orphan", order_by="Message.created_at")
@@ -122,6 +128,7 @@ class Edge(Base):
     source_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
     target_node_id = Column(Integer, ForeignKey("nodes.id"), nullable=False, index=True)
     context_mode = Column(String(50), default="full_history")
+    route_tag = Column(String(20))
 
     __table_args__ = (
         UniqueConstraint('project_id', 'source_node_id', 'target_node_id', name='uq_edge_source_target'),

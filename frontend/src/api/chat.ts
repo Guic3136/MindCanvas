@@ -49,7 +49,7 @@ export async function getMessages(projectId: number, nodeId: number): Promise<Me
 
 export async function createEdge(
   projectId: number,
-  data: { source_node_id: number; target_node_id: number; context_mode?: string }
+  data: { source_node_id: number; target_node_id: number; context_mode?: string; route_tag?: string }
 ): Promise<EdgeInfo> {
   const { data: result } = await client.post<EdgeInfo>(`/projects/${projectId}/edges`, data)
   return result

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import type { Project, NodeInfo, EdgeInfo, ModelInfo, PaginatedResponse } from '../types'
 import * as projectApi from '../api/project'
 import * as chatApi from '../api/chat'
@@ -19,7 +20,7 @@ interface CanvasState {
   updateNodeLabel: (nodeId: number, label: string) => Promise<void>
   updateNodeModel: (nodeId: number, modelId: number) => Promise<void>
   removeNode: (nodeId: number) => Promise<void>
-  addEdge: (sourceId: number, targetId: number) => Promise<void>
+  addEdge: (sourceId: number, targetId: number, routeTag?: string) => Promise<void>
   updateEdgeMode: (edgeId: number, contextMode: string) => Promise<void>
   removeEdge: (edgeId: number) => Promise<void>
 }
@@ -141,8 +142,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   updateNodeModel: async (nodeId, modelId) => {
     try {
-      const { project } = get()
+      const { project, models } = get()
       if (!project) return
+      const newModel = models.find((m) => m.id === modelId)
+      const incomingEdges = project.edges.filter((e) => e.target_node_id === nodeId)
+      const hasImageSource = incomingEdges.some((e) => {
+        const sourceNode = project.nodes.find((n) => n.id === e.source_node_id)
+        return sourceNode?.node_type === 'file' && sourceNode.file_type === 'image'
+      })
+      if (hasImageSource && newModel && !newModel.supports_vision) {
+        toast.error('当前节点有来自图片文件节点的连线，无法切换到不支持 Vision 的模型')
+        return
+      }
       await chatApi.updateNode(project.id, nodeId, { model_id: modelId })
       set((s) => ({
         project: s.project
@@ -181,13 +192,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
   },
 
-  addEdge: async (sourceId, targetId) => {
+  addEdge: async (sourceId, targetId, routeTag?: string) => {
     try {
       const { project } = get()
       if (!project) return
       const edge = await chatApi.createEdge(project.id, {
         source_node_id: sourceId,
         target_node_id: targetId,
+        route_tag: routeTag,
       })
       set((s) => ({
         project: s.project ? { ...s.project, edges: [...s.project.edges, edge] } : null,

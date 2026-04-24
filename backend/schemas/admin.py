@@ -38,6 +38,7 @@ class ModelUpdate(BaseModel):
     model_id: Optional[str] = None
     display_name: Optional[str] = None
     is_enabled: Optional[bool] = None
+    supports_vision: Optional[bool] = None
 
 
 class ModelResponse(BaseModel):
@@ -46,6 +47,7 @@ class ModelResponse(BaseModel):
     model_id: str
     display_name: str
     is_enabled: bool
+    supports_vision: bool
 
     class Config:
         from_attributes = True
