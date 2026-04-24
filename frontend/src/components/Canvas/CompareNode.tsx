@@ -4,6 +4,7 @@ import { NodeResizer } from '@xyflow/react'
 import { Play, Loader2, Check } from 'lucide-react'
 import ChatNodeHeader from './ChatNodeHeader'
 import { useCanvasStore } from '../../stores/canvasStore'
+import { nodeRegistry, type NodeType } from './nodeRegistry'
 import client from '../../api/client'
 import { toast } from 'sonner'
 
@@ -14,7 +15,8 @@ interface CompareNodeData {
   compare_model_ids?: string
 }
 
-export default function CompareNode({ data, selected, width, height }: NodeProps) {
+export default function CompareNode({ data, selected, width, height, type }: NodeProps) {
+  const nodeColor = nodeRegistry[(type as NodeType) ?? 'chat']?.color
   const { label, db_node_id, project_id, compare_model_ids } = data as unknown as CompareNodeData
   const { models, updateNodeLabel, updateNodeSize, removeNode } = useCanvasStore()
 
@@ -68,9 +70,10 @@ export default function CompareNode({ data, selected, width, height }: NodeProps
         }}
       />
       <div
-        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        className={`relative bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
         style={{ width: width || 480, height: height || 360, minHeight: 200 }}
       >
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-lg" style={{ backgroundColor: nodeColor }} />
         <ChatNodeHeader
           label={label}
           onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}

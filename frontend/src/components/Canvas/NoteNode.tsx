@@ -3,6 +3,7 @@ import type { NodeProps } from '@xyflow/react'
 import { NodeResizer } from '@xyflow/react'
 import ChatNodeHeader from './ChatNodeHeader'
 import { useCanvasStore } from '../../stores/canvasStore'
+import { nodeRegistry, type NodeType } from './nodeRegistry'
 import client from '../../api/client'
 
 interface NoteNodeData {
@@ -12,7 +13,8 @@ interface NoteNodeData {
   note_content?: string
 }
 
-export default function NoteNode({ data, selected, width, height }: NodeProps) {
+export default function NoteNode({ data, selected, width, height, type }: NodeProps) {
+  const nodeColor = nodeRegistry[(type as NodeType) ?? 'chat']?.color
   const { label, db_node_id, project_id, note_content } = data as unknown as NoteNodeData
   const { updateNodeLabel, updateNodeSize, removeNode } = useCanvasStore()
 
@@ -37,9 +39,10 @@ export default function NoteNode({ data, selected, width, height }: NodeProps) {
         }}
       />
       <div
-        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        className={`relative bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
         style={{ width: width || 280, height: height || 200, minHeight: 120 }}
       >
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-lg" style={{ backgroundColor: nodeColor }} />
         <ChatNodeHeader
           label={label}
           onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}

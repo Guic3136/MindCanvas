@@ -4,6 +4,7 @@ import { NodeResizer } from '@xyflow/react'
 import { Play, Loader2 } from 'lucide-react'
 import ChatNodeHeader from './ChatNodeHeader'
 import { useCanvasStore } from '../../stores/canvasStore'
+import { nodeRegistry, type NodeType } from './nodeRegistry'
 import client from '../../api/client'
 import { toast } from 'sonner'
 
@@ -15,7 +16,8 @@ interface TransformNodeData {
   transform_output?: string
 }
 
-export default function TransformNode({ data, selected, width, height }: NodeProps) {
+export default function TransformNode({ data, selected, width, height, type }: NodeProps) {
+  const nodeColor = nodeRegistry[(type as NodeType) ?? 'chat']?.color
   const { label, db_node_id, project_id, transform_prompt, transform_output } = data as unknown as TransformNodeData
   const { updateNodeLabel, updateNodeSize, removeNode } = useCanvasStore()
 
@@ -55,9 +57,10 @@ export default function TransformNode({ data, selected, width, height }: NodePro
         }}
       />
       <div
-        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        className={`relative bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
         style={{ width: width || 360, height: height || 320, minHeight: 200 }}
       >
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-lg" style={{ backgroundColor: nodeColor }} />
         <ChatNodeHeader
           label={label}
           onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}

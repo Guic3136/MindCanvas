@@ -13,7 +13,7 @@ import { MousePointer2, GitBranchPlus, Send, X, HelpCircle } from 'lucide-react'
 import CustomEdge from './CustomEdge'
 import CanvasToolbar from './CanvasToolbar'
 import NodeTypePanel from './NodeTypePanel'
-import { reactFlowNodeTypes } from './nodeRegistry'
+import { reactFlowNodeTypes, nodeRegistry } from './nodeRegistry'
 import { useCanvasStore } from '../../stores/canvasStore'
 import * as projectApi from '../../api/project'
 import client from '../../api/client'
@@ -24,7 +24,7 @@ function FlowCanvasInner() {
   const { id: projectIdStr } = useParams()
   const projectId = Number(projectIdStr)
   const { project, models, error, loadProject, loadModels, addNode, updateNodePosition, addEdge: addDbEdge, updateEdgeMode, removeEdge: removeDbEdge } = useCanvasStore()
-  const { getViewport, fitView, getNodes, getNodesBounds } = useReactFlow()
+  const { getViewport, fitView, getNodes, getNodesBounds, screenToFlowPosition } = useReactFlow()
 
   const [projectName, setProjectName] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -193,6 +193,32 @@ function FlowCanvasInner() {
     addNode(models[0].id, pos, nodeType)
   }, [models, addNode, getSmartPosition])
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }, [])
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    const nodeType = event.dataTransfer.getData('application/mindcanvas-node')
+    if (!nodeType || !nodeRegistry[nodeType]) return
+    if (models.length === 0) {
+      toast.error('请先在管理员页面添加模型')
+      return
+    }
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    })
+    // Center the node on the mouse cursor
+    const defaultWidth = 400
+    const defaultHeight = 500
+    addNode(models[0].id, {
+      x: position.x - defaultWidth / 2,
+      y: position.y - defaultHeight / 2,
+    }, nodeType)
+  }, [screenToFlowPosition, addNode, models])
+
   const handleExport = useCallback(async () => {
     const { data } = await client.post(`/projects/${projectId}/export`, {}, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([data], { type: 'text/markdown' }))
@@ -253,6 +279,8 @@ function FlowCanvasInner() {
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
         onViewportChange={(vp) => setZoom(vp.zoom)}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         nodeTypes={reactFlowNodeTypes}
         edgeTypes={edgeTypes}
         fitView

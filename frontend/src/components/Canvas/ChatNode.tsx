@@ -9,6 +9,7 @@ import ChatNodeInput from './ChatNodeInput'
 import { useCanvasStore } from '../../stores/canvasStore'
 import { useChatStore } from '../../stores/chatStore'
 import type { ModelInfo } from '../../types'
+import { nodeRegistry, type NodeType } from './nodeRegistry'
 
 interface ChatNodeData {
   label: string
@@ -18,7 +19,8 @@ interface ChatNodeData {
   node_type: string
 }
 
-export default function ChatNode({ data, selected, width, height }: NodeProps) {
+export default function ChatNode({ data, selected, width, height, type }: NodeProps) {
+  const nodeColor = nodeRegistry[(type as NodeType) ?? 'chat']?.color
   const { label, model_id, db_node_id, project_id } = data as unknown as ChatNodeData
   const { models, updateNodeLabel, updateNodeModel, updateNodeSize, removeNode } = useCanvasStore()
   const { messages, streaming, loading, errors, loadMessages, sendMessage, cancelStream } = useChatStore()
@@ -44,10 +46,11 @@ export default function ChatNode({ data, selected, width, height }: NodeProps) {
         }}
       />
       <div
-        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        className={`relative bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
         style={{ width: width || 400, height: height || 500, minHeight: 250 }}
       >
-      <ChatNodeHeader
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-lg" style={{ backgroundColor: nodeColor }} />
+        <ChatNodeHeader
         label={label}
         onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}
         onDelete={() => removeNode(db_node_id)}

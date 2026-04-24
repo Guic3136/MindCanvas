@@ -6,6 +6,7 @@ import ChatNodeHeader from './ChatNodeHeader'
 import ChatNodeInput from './ChatNodeInput'
 import FilePreview from './FilePreview'
 import { useCanvasStore } from '../../stores/canvasStore'
+import { nodeRegistry, type NodeType } from './nodeRegistry'
 import { useChatStore } from '../../stores/chatStore'
 import client from '../../api/client'
 import { toast } from 'sonner'
@@ -21,7 +22,8 @@ interface FileNodeData {
   file_type?: string
 }
 
-export default function FileNode({ data, selected, width, height }: NodeProps) {
+export default function FileNode({ data, selected, width, height, type }: NodeProps) {
+  const nodeColor = nodeRegistry[(type as NodeType) ?? 'chat']?.color
   const {
     label, model_id, db_node_id, project_id,
     file_url, file_name, file_type,
@@ -86,9 +88,10 @@ export default function FileNode({ data, selected, width, height }: NodeProps) {
         }}
       />
       <div
-        className={`bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
+        className={`relative bg-bg-raised border rounded-lg shadow-raised flex flex-col inset-highlight transition-ui ${selected ? 'border-brand glow-brand' : 'border-border'}`}
         style={{ width: width || 400, height: height || 500, minHeight: 250 }}
       >
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-lg" style={{ backgroundColor: nodeColor }} />
         <ChatNodeHeader
           label={label}
           onLabelChange={(newLabel) => updateNodeLabel(db_node_id, newLabel)}

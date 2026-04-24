@@ -46,7 +46,12 @@ export default function NodeTypePanel({ onAddNode }: Props) {
                 return (
                   <button
                     key={type}
+                    draggable
                     onClick={() => handleAdd(type)}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('application/mindcanvas-node', type)
+                      e.dataTransfer.effectAllowed = 'copy'
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-ui group"
                     title={collapsed ? meta.label : meta.description}
                   >

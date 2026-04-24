@@ -33,6 +33,7 @@ export interface NodeTypeMeta {
   icon: ComponentType<{ size?: number; className?: string }>
   category: 'input' | 'process' | 'output'
   description: string
+  color: string
 }
 
 export const nodeRegistry: Record<string, NodeTypeMeta> = {
@@ -42,6 +43,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: MessageSquare,
     category: 'input',
     description: '与 AI 模型进行多轮对话',
+    color: '#6a5fc1',
   },
   file: {
     component: FileNode,
@@ -49,6 +51,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: FileUp,
     category: 'input',
     description: '上传图片、PDF、Excel 等文件',
+    color: '#c29f4e',
   },
   note: {
     component: NoteNode,
@@ -56,6 +59,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: StickyNote,
     category: 'input',
     description: '记录文本笔记，不参与 AI 流程',
+    color: '#e8d44d',
   },
   web: {
     component: WebNode,
@@ -63,6 +67,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: Globe,
     category: 'input',
     description: '抓取网页内容作为 AI 上下文',
+    color: '#4ec2ef',
   },
   transform: {
     component: TransformNode,
@@ -70,6 +75,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: TextCursor,
     category: 'process',
     description: '翻译、格式化、摘要等文本处理',
+    color: '#ef8a4e',
   },
   compare: {
     component: CompareNode,
@@ -77,6 +83,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: GitCompare,
     category: 'process',
     description: '并行调用多个模型对比结果',
+    color: '#ef4e8a',
   },
   code: {
     component: CodeNode,
@@ -84,6 +91,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: Code2,
     category: 'process',
     description: '运行 Python / JavaScript 代码',
+    color: '#4eef9f',
   },
   image_gen: {
     component: ImageGenNode,
@@ -91,6 +99,7 @@ export const nodeRegistry: Record<string, NodeTypeMeta> = {
     icon: ImagePlus,
     category: 'output',
     description: '根据提示词生成图片',
+    color: '#b86af0',
   },
 }
 
