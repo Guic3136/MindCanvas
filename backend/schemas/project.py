@@ -29,6 +29,13 @@ class NodeBrief(BaseModel):
     note_content: Optional[str] = None
     transform_prompt: Optional[str] = None
     transform_output: Optional[str] = None
+    transform_format: Optional[str] = None
+    merge_strategy: Optional[str] = None
+    self_critique: Optional[bool] = None
+    max_iterations: Optional[int] = None
+    batch_mode: Optional[bool] = None
+    routing_rules: Optional[str] = None
+    transform_route: Optional[str] = None
     compare_model_ids: Optional[str] = None
     code_language: Optional[str] = None
     code_script: Optional[str] = None
