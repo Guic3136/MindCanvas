@@ -438,8 +438,11 @@ async def transform_text(project_id: int, nid: int, body: dict, db: AsyncSession
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=422, detail=f"Generated output is not valid JSON: {e}")
     elif transform_format == "yaml":
-        if not output.strip() or output.strip()[0] not in "-{|":
-            raise HTTPException(status_code=422, detail="Generated output does not appear to be valid YAML")
+        try:
+            import yaml
+            yaml.safe_load(output)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Generated output is not valid YAML: {e}")
 
     # Routing rules: match output to route
     route = None
