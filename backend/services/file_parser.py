@@ -44,6 +44,11 @@ def extract_excel_text(file_path: str) -> str:
 
 def get_file_text(file_path: str, file_type: Optional[str]) -> str:
     """Extract text content from a file based on its type."""
+    # Convert /uploads/ URL paths to local filesystem paths
+    if file_path.startswith("/uploads/"):
+        from pathlib import Path
+        backend_dir = Path(__file__).parent.parent
+        file_path = str(backend_dir / "uploads" / file_path[len("/uploads/"):])
     if not os.path.exists(file_path):
         return "[文件不存在]"
     if file_type == "pdf":
