@@ -39,32 +39,44 @@ export default function ImageGenConfig() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-medium text-text-primary">图片生成配置</h2>
-      <div className="bg-bg-raised border border-border rounded-lg p-4 space-y-3 shadow-raised max-w-xl">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="名称"
-          className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
-        />
-        <input
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder="API 地址"
-          className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
-        />
-        <input
-          value={modelId}
-          onChange={(e) => setModelId(e.target.value)}
-          placeholder="模型 ID"
-          className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
-        />
-        <input
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder={config?.api_key_masked ? '已设置' : 'API Key'}
-          type="password"
-          className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
-        />
+      <div className="bg-bg-raised border border-border rounded-lg p-4 space-y-4 shadow-raised max-w-xl">
+        <div>
+          <label className="block text-text-secondary text-xs mb-1">配置名称</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="如：qwen-image-2.0-pro"
+            className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
+          />
+        </div>
+        <div>
+          <label className="block text-text-secondary text-xs mb-1">API 地址</label>
+          <input
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="如：https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+            className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
+          />
+        </div>
+        <div>
+          <label className="block text-text-secondary text-xs mb-1">模型 ID</label>
+          <input
+            value={modelId}
+            onChange={(e) => setModelId(e.target.value)}
+            placeholder="如：qwen-image-2.0-pro"
+            className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
+          />
+        </div>
+        <div>
+          <label className="block text-text-secondary text-xs mb-1">API Key</label>
+          <input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={config?.api_key_masked ? '已设置，重新输入可覆盖' : '请输入 DashScope API Key'}
+            type="password"
+            className="w-full bg-bg-surface text-text-primary rounded px-3 py-2 text-sm outline-none border border-border inset-input"
+          />
+        </div>
         <div className="flex gap-2">
           <button onClick={handleSave} className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-text-inverse rounded text-sm transition-ui">
             保存
