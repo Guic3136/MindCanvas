@@ -16,7 +16,11 @@ async def generate_image(
 ) -> list[str]:
     """Generate images using Qwen-Image API. Returns list of local file paths."""
 
-    url = f"{base_url}/services/aigc/multimodal-generation/generation"
+    # Support both base URL-only and full endpoint URL configurations
+    if base_url.rstrip("/").endswith("/services/aigc/multimodal-generation/generation"):
+        url = base_url.rstrip("/")
+    else:
+        url = f"{base_url.rstrip('/')}/services/aigc/multimodal-generation/generation"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -47,29 +51,29 @@ async def generate_image(
         response.raise_for_status()
         data = response.json()
 
-    # Extract image URLs from response
-    image_urls = []
-    choices = data.get("output", {}).get("choices", [])
-    for choice in choices:
-        content = choice.get("message", {}).get("content", [])
-        for item in content:
-            if "image" in item:
-                image_urls.append(item["image"])
+        # Extract image URLs from response
+        image_urls = []
+        choices = data.get("output", {}).get("choices", [])
+        for choice in choices:
+            content = choice.get("message", {}).get("content", [])
+            for item in content:
+                if "image" in item:
+                    image_urls.append(item["image"])
 
-    # Download images to local storage
-    uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads", "images")
-    os.makedirs(uploads_dir, exist_ok=True)
+        # Download images to local storage
+        uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads", "images")
+        os.makedirs(uploads_dir, exist_ok=True)
 
-    local_paths = []
-    for img_url in image_urls[:n]:
-        img_response = await client.get(img_url)
-        img_response.raise_for_status()
-        ext = ".png" if "png" in img_response.headers.get("content-type", "") else ".jpg"
-        filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(uploads_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(img_response.content)
-        local_paths.append(f"/uploads/images/{filename}")
+        local_paths = []
+        for img_url in image_urls[:n]:
+            img_response = await client.get(img_url)
+            img_response.raise_for_status()
+            ext = ".png" if "png" in img_response.headers.get("content-type", "") else ".jpg"
+            filename = f"{uuid.uuid4().hex}{ext}"
+            filepath = os.path.join(uploads_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(img_response.content)
+            local_paths.append(f"/uploads/images/{filename}")
 
     return local_paths
 
